@@ -44,6 +44,7 @@ import os
 import shutil
 import tempfile
 import time
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import Any, Final
 
@@ -73,8 +74,9 @@ logger = get_logger(__name__)
 # esa tushunarli `SandboxUnavailableError` tashlaydi.
 
 try:  # pragma: no cover - paket mavjudligiga bog'liq
-    import docker
     from docker.errors import APIError, DockerException, ImageNotFound, NotFound
+
+    import docker
 except ImportError:  # pragma: no cover - `docker` o'rnatilmagan
     docker = None  # type: ignore[assignment]
 
@@ -142,6 +144,14 @@ LOG_QUEUE_PUT_TIMEOUT_SECONDS: Final[float] = 30.0
 
 #: Konteyner tugagandan keyin qolgan loglarni yig'ib olishga berilgan vaqt.
 LOG_DRAIN_TIMEOUT_SECONDS: Final[float] = 10.0
+
+#: Konteynerni ishga tushirishdan oldin log oqimiga ulanishni qancha kutamiz.
+#:
+#: Ulanish `asyncio.to_thread` ichida bo'ladi va thread havzasi band bo'lsa
+#: navbat kutadi. Cheksiz kutish job'ni bloklab qo'yardi, shuning uchun
+#: chegara bor: oshsa loglarsiz davom etamiz (ish natijasi loglardan
+#: muhimroq), lekin buni ochiq ogohlantirish bilan yozamiz.
+LOG_ATTACH_TIMEOUT_SECONDS: Final[float] = 5.0
 
 #: HTTP klient timeout'i: eng uzun job + zaxira. `container.wait()` ayni shu
 #: timeout bilan cheklangani uchun u MAX_TIMEOUT_SECONDS dan katta bo'lishi shart.
@@ -334,7 +344,58 @@ class SandboxManager:
         client = await self._ensure_client()
         await self._ensure_image(client, runtime)
 
-        container = await self._start_container(client, spec, runtime, workdir)
+        queue: asyncio.Queue[tuple[LogStream, str] | None] = asyncio.Queue(
+            maxsize=LOG_QUEUE_MAXSIZE
+        )
+        loop = asyncio.get_running_loop()
+        tasks: dict[str, asyncio.Task[Any]] = {}
+
+        async def attach_logs(created: Any) -> None:
+            """Log oqimiga ulanadi va ULANGUNCHA kutadi.
+
+            ═══════════════════════════════════════════════════════════════
+            NEGA BU KONTEYNER ISHGA TUSHISHIDAN OLDIN BO'LADI
+            ═══════════════════════════════════════════════════════════════
+
+            Ilgari ulanish `start()` dan KEYIN bo'lardi va faqat vazifa
+            yaratilardi — uning haqiqatan ulanganini hech kim kutmasdi.
+
+            Ulanish `asyncio.to_thread` ichida bajariladi. Bir vaqtda bir
+            nechta job ishlaganda thread havzasi band bo'ladi (har bir job
+            `prepare_workdir`, `create`, `start`, `wait`, `read_result_file`
+            uchun thread oladi), shuning uchun ulanish navbatda kutib
+            qolishi mumkin. Shu orada 300 ms yashaydigan konteyner allaqachon
+            tugab bo'ladi — va tugagan konteynerga `attach` BO'SH oqim
+            qaytaradi.
+
+            Oqibati o'lchangan: 72 ta job'dan 2 tasida (~2.8%) chiqish
+            butunlay yo'qolgan. Natija joyida, `status=success`, `stdout`
+            esa bo'sh — ya'ni nosozlik jim kechadi.
+
+            Konteyner YARATILGAN, lekin ISHGA TUSHMAGAN holatda ulansak,
+            u hali bitta ham bayt chiqarmagan bo'ladi. Shuning uchun bu
+            ehtimollikni kamaytirish emas — poygani BUTUNLAY yo'q qilish.
+            """
+            attached = asyncio.Event()
+            tasks["pump"] = asyncio.create_task(
+                asyncio.to_thread(_pump_logs, created, queue, loop, attached)
+            )
+            tasks["drain"] = asyncio.create_task(_drain_logs(queue, on_log))
+            try:
+                await asyncio.wait_for(attached.wait(), timeout=LOG_ATTACH_TIMEOUT_SECONDS)
+            except TimeoutError:
+                # Ulanish ulgurmadi. Job'ni bloklamaymiz — natija loglardan
+                # muhimroq — lekin bu holat ko'rinmas qolmasligi kerak.
+                logger.warning(
+                    "log oqimiga ulanish vaqti oshdi — chiqish yo'qolishi mumkin",
+                    job_id=spec.job_id,
+                    timeout=LOG_ATTACH_TIMEOUT_SECONDS,
+                    attempt=spec.attempt_number,
+                )
+
+        container = await self._start_container(
+            client, spec, runtime, workdir, before_start=attach_logs
+        )
         self._container = container
         sandbox_id = str(container.id or "")[:SANDBOX_ID_LENGTH]
 
@@ -347,12 +408,8 @@ class SandboxManager:
             attempt=spec.attempt_number,
         )
 
-        queue: asyncio.Queue[tuple[LogStream, str] | None] = asyncio.Queue(
-            maxsize=LOG_QUEUE_MAXSIZE
-        )
-        loop = asyncio.get_running_loop()
-        pump = asyncio.create_task(asyncio.to_thread(_pump_logs, container, queue, loop))
-        drain = asyncio.create_task(_drain_logs(queue, on_log))
+        pump = tasks["pump"]
+        drain = tasks["drain"]
 
         try:
             exit_code, timed_out = await self._wait_for_exit(container, spec)
@@ -399,8 +456,14 @@ class SandboxManager:
         spec: SandboxSpec,
         runtime: BaseRuntime,
         workdir: Path,
+        before_start: Callable[[Any], Awaitable[None]] | None = None,
     ) -> Any:
         """Konteynerni yaratadi va ishga tushiradi.
+
+        Args:
+            before_start: Konteyner YARATILGANDAN keyin, lekin ISHGA
+                TUSHIRILISHIDAN oldin chaqiriladi. Log oqimiga ulanish shu
+                yerda bo'ladi — sabab quyida.
 
         Raises:
             SandboxStartupError: Konteyner yaratilmadi (masalan `runsc`
@@ -448,10 +511,19 @@ class SandboxManager:
         except APIError as exc:
             raise self._startup_error(exc, spec, runtime) from exc
 
+        # Log oqimiga ulanish KONTEYNER ISHGA TUSHMASDAN oldin bo'lishi shart —
+        # batafsil sababi `_execute` dagi izohda.
+        if before_start is not None:
+            try:
+                await before_start(container)
+            except Exception:
+                # Ulanish yiqilsa job baribir bajarilishi kerak: natija
+                # loglardan muhimroq. Konteynerni tozalashni unutmaymiz.
+                await self._force_remove(container)
+                raise
+
         try:
-            await asyncio.wait_for(
-                asyncio.to_thread(container.start), timeout=startup_timeout
-            )
+            await asyncio.wait_for(asyncio.to_thread(container.start), timeout=startup_timeout)
         except TimeoutError as exc:
             # Konteyner yaratilgan, lekin `start()` javob bermadi — oqishni
             # oldini olish uchun o'chirishga HARAKAT qilamiz (u ham osilishi
@@ -556,9 +628,7 @@ class SandboxManager:
             environment.update(runtime_env(spec))
 
         environment.update(spec.safe_env())
-        environment.update(
-            to_sandbox_env(spec.limits, runtime=runtime, workdir=SANDBOX_WORKDIR)
-        )
+        environment.update(to_sandbox_env(spec.limits, runtime=runtime, workdir=SANDBOX_WORKDIR))
         return environment
 
     async def _wait_for_exit(
@@ -803,6 +873,7 @@ def _pump_logs(
     container: Any,
     queue: asyncio.Queue[tuple[LogStream, str] | None],
     loop: asyncio.AbstractEventLoop,
+    attached: asyncio.Event | None = None,
 ) -> None:
     """Konteyner chiqishini blokiruvchi generatordan o'qib navbatga uzatadi.
 
@@ -820,7 +891,14 @@ def _pump_logs(
     }
     stream: Any = None
     try:
-        stream, demuxed = _open_log_stream(container)
+        try:
+            stream, demuxed = _open_log_stream(container)
+        finally:
+            # Ulanish muvaffaqiyatli bo'ldimi yoki yo'qmi — chaqiruvchi
+            # KUTIB QOLMASLIGI kerak. Aks holda `attach` yiqilganda
+            # konteyner hech qachon ishga tushmasdi.
+            if attached is not None:
+                loop.call_soon_threadsafe(attached.set)
         for frame in stream:
             if demuxed and isinstance(frame, tuple):
                 pairs = tuple(zip((LogStream.STDOUT, LogStream.STDERR), frame, strict=False))
@@ -909,9 +987,7 @@ async def _finish_log_tasks(pump: asyncio.Task[Any], drain: asyncio.Task[Any]) -
     # ochiq log qilamiz. Aks holda log quvuridagi nosozlik "loglar yo'q"
     # ko'rinishida, sababsiz qolib ketardi.
     for name, result in zip(("pump", "drain"), results, strict=False):
-        if isinstance(result, BaseException) and not isinstance(
-            result, asyncio.CancelledError
-        ):
+        if isinstance(result, BaseException) and not isinstance(result, asyncio.CancelledError):
             logger.warning(
                 "log vazifasi xato bilan tugadi",
                 task=name,

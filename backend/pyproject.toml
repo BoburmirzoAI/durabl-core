@@ -47,7 +47,13 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
 pythonpath = ["."]
-addopts = "-q --strict-markers --tb=short"
+# `-m "not docker"` — haqiqiy Docker talab qiladigan testlar STANDART
+# ishga tushirishda O'TKAZIB YUBORILADI. Ikki sabab:
+#   1. Docker yo'q muhitda (CI) ular yiqilardi, holbuki kodda xato yo'q;
+#   2. Ular o'nlab konteyner ko'taradi va mashinani yuklab, vaqtga sezgir
+#      testlarni (`test_worker_pool`) tasodifan yiqitadi.
+# Ularni ishga tushirish: `make test-sandbox` (u `-m docker` bilan bekor qiladi).
+addopts = "-q --strict-markers --tb=short -m 'not docker'"
 markers = [
     "unit: tez, izolyatsiyalangan testlar",
     "integration: DB/Redis bilan ishlaydigan testlar",

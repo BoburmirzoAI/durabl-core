@@ -10,7 +10,21 @@ testlar esa HAQIQIY konteyner ishga tushiradi: Docker demoni, yig'ilgan
 Ikkalasini aralashtirish ikki tomonga ham zarar: tez testlar sekinlashadi,
 sekin testlar esa "Docker yo'q" sababli CI'da yiqilib, hammani bezovta
 qiladi. Shuning uchun ular `@pytest.mark.docker` bilan ajratilgan va
-faqat `make test-sandbox` da ishlaydi.
+`pyproject.toml` dagi `addopts` ularni STANDART ishga tushirishdan
+chiqarib tashlaydi.
+
+## DIQQAT: bitta testni yakka ishga tushirish
+
+`addopts` da `-m "not docker"` turgani uchun yo'l bo'yicha chaqirish
+JIM ravishda hech narsa ishlatmaydi::
+
+    pytest tests/docker/test_sandbox_execution.py::test_x   # 1 deselected
+
+Markerni ochiq bekor qilish kerak::
+
+    pytest tests/docker/test_sandbox_execution.py::test_x -m docker
+
+Butun to'plam uchun: `make test-sandbox`.
 
 ## Nega bu testlar KERAK edi
 
@@ -23,9 +37,8 @@ chaqirilmaydi). Bitta test shu xatoni oldini olardi.
 
 from __future__ import annotations
 
-import asyncio
 import pathlib
-from collections.abc import AsyncIterator, Iterator
+from collections.abc import AsyncIterator
 from typing import Any
 
 import pytest
@@ -127,29 +140,3 @@ def make_spec(
         payload=payload,
         correlation_id="test-correlation",
     )
-
-
-@pytest.fixture
-def anyio_backend() -> str:  # pragma: no cover - asyncio_mode=auto uchun zaxira
-    return "asyncio"
-
-
-@pytest.fixture(autouse=True)
-def _fail_fast_on_hang() -> Iterator[None]:
-    """Osilib qolgan test butun to'plamni bloklamasligi uchun eslatma.
-
-    Haqiqiy vaqt chegarasi `limits.timeout_seconds` da — bu fixture faqat
-    `asyncio` hodisa halqasi toza qolishini ta'minlaydi.
-    """
-    yield
-    pending = [t for t in asyncio.all_tasks() if not t.done()] if _loop_running() else []
-    for task in pending:
-        task.cancel()
-
-
-def _loop_running() -> bool:
-    try:
-        asyncio.get_running_loop()
-    except RuntimeError:
-        return False
-    return True
