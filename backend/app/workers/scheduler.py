@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timedelta
+from time import monotonic
 from typing import Any, Final
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -44,6 +45,7 @@ from app.config import settings
 from app.constants import JobStatus, Priority, RedisKeys
 from app.database import session_scope
 from app.exceptions import DurablError, QueueError, ValidationError
+from app.execution.executor import Executor
 from app.logging_config import get_logger
 from app.metrics import set_dlq_depth
 from app.models.job import Job
@@ -100,13 +102,20 @@ class SchedulerWorker(PeriodicWorker):
         self._promoted_total = 0
         self._recovered_total = 0
         self._cron_total = 0
+        self._cleanup_every = float(settings.SANDBOX_CLEANUP_INTERVAL_SECONDS)
+        #: Oxirgi tozalash vaqti (monotonik). `None` — hali bir marta ham
+        #: bajarilmagan, ya'ni birinchi siklda darhol ishlaydi: scheduler
+        #: ko'tarilishi odatda qulashdan KEYIN bo'ladi va aynan o'shanda
+        #: qoldiq bo'lishi eng ehtimolli.
+        self._last_cleanup: float | None = None
+        self._orphans_total = 0
 
     # ------------------------------------------------------------------
     # Sikl
     # ------------------------------------------------------------------
 
     async def tick(self) -> None:
-        """Bitta sikl: promote -> reaper -> tiklash -> cron -> metrikalar.
+        """Bitta sikl: promote -> reaper -> tiklash -> cron -> metrikalar -> tozalash.
 
         Har qadam MUSTAQIL: biri xato bersa qolganlari baribir bajariladi.
         `promote_due()` ishlamay qolgani uchun lease reaper to'xtab qolsa,
@@ -129,6 +138,53 @@ class SchedulerWorker(PeriodicWorker):
         async with session_scope() as session:
             await self._run_step("prune_workers", self._prune_workers(session))
             await self._run_step("metrics", self._refresh_metrics(session, queue))
+
+        # DB sessiyasi kerak emas — Docker bilan ishlaydi.
+        if self._cleanup_due():
+            await self._run_step("sandbox_cleanup", self._cleanup_sandboxes())
+
+    def _cleanup_due(self) -> bool:
+        """Sandbox tozalash vaqti keldimi.
+
+        Scheduler har soniyada ishlaydi, Docker'dan konteyner ro'yxatini esa
+        har soniyada so'rash isrof bo'lardi — qoldiq faqat jarayon
+        qulaganda paydo bo'ladi.
+        """
+        now = monotonic()
+        if self._last_cleanup is None or now - self._last_cleanup >= self._cleanup_every:
+            self._last_cleanup = now
+            return True
+        return False
+
+    async def _cleanup_sandboxes(self) -> None:
+        """Egasiz sandbox konteynerlarini o'chiradi.
+
+        ═══════════════════════════════════════════════════════════════════
+        NEGA BU SCHEDULER'DA
+        ═══════════════════════════════════════════════════════════════════
+
+        Oddiy ishda qoldiq qolmaydi: `SandboxManager.run()` konteynerni
+        `finally` da o'chiradi. Lekin jarayon O'RTADA o'lsa (SIGKILL, OOM,
+        deploy) `finally` umuman ishlamaydi va konteyner qoladi.
+
+        Scheduler bu ish uchun to'g'ri joy, chunki u:
+
+        * davriy ishlaydi — qo'lda aralashuv kerak emas;
+        * butun klasterda YAGONA (`exclusive = True`), ya'ni N ta worker
+          bir-birining konteynerini o'chirishga urinmaydi;
+        * `docker.sock` ga ulangan (`x-worker-common` compose anchor'i).
+
+        Lokal rejimda (`SANDBOX_ENABLED=false`) `LocalRunner.cleanup_orphans()`
+        har doim `0` qaytaradi, shuning uchun qadam zararsiz.
+        """
+        removed = await Executor().cleanup_orphans()
+        if removed:
+            self._orphans_total += removed
+            logger.info(
+                "scheduler.sandbox_cleanup",
+                removed=removed,
+                total=self._orphans_total,
+            )
 
     async def _run_step(self, step: str, coro: Any) -> None:
         """Bitta qadamni xato to'sig'i ichida bajaradi.
@@ -299,9 +355,7 @@ class SchedulerWorker(PeriodicWorker):
             order_by=Job.created_at.asc(),
         )
         due = await jobs.due_scheduled(now, limit=self.batch_size)
-        stuck_after = now - timedelta(
-            seconds=settings.LEASE_TTL_SECONDS * STUCK_RUNNING_FACTOR
-        )
+        stuck_after = now - timedelta(seconds=settings.LEASE_TTL_SECONDS * STUCK_RUNNING_FACTOR)
         stuck = await jobs.stuck_running(stuck_after, limit=self.batch_size)
 
         merged: dict[uuid.UUID, Job] = {}
@@ -339,9 +393,7 @@ class SchedulerWorker(PeriodicWorker):
         try:
             processing_keys = [
                 str(key)
-                async for key in redis.scan_iter(
-                    match=RedisKeys.processing("*"), count=SCAN_COUNT
-                )
+                async for key in redis.scan_iter(match=RedisKeys.processing("*"), count=SCAN_COUNT)
             ]
             async with redis.pipeline(transaction=False) as pipe:
                 for priority in Priority:

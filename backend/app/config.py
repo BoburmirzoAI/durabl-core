@@ -167,6 +167,12 @@ class Settings(BaseSettings):
     # ------------------------------------------------------------------
     SCHEDULER_ENABLED: bool = True
     SCHEDULER_INTERVAL_SECONDS: float = 1.0
+    #: Egasiz sandbox konteynerlarini qancha vaqtda bir tozalash (soniya).
+    #:
+    #: Scheduler har soniyada ishlaydi, lekin Docker'dan konteyner ro'yxatini
+    #: har soniyada so'rash isrof: qoldiq faqat jarayon qulaganda paydo
+    #: bo'ladi, ya'ni kamdan-kam. 5 daqiqa yetarlicha tez.
+    SANDBOX_CLEANUP_INTERVAL_SECONDS: float = 300.0
     SCHEDULER_BATCH_SIZE: int = 100
 
     # ------------------------------------------------------------------

@@ -35,6 +35,7 @@ from typing import Final
 from app.config import settings
 from app.constants import WorkerState
 from app.database import session_scope
+from app.execution.executor import Executor
 from app.logging_config import get_logger
 from app.services.reliability_service import ReliabilityService
 from app.workers.runner import PeriodicWorker, main_entry
@@ -107,6 +108,20 @@ class WorkerPool(PeriodicWorker):
             concurrency=self.concurrency,
             base_worker_id=settings.worker_id,
         )
+
+        # Oldingi qulashdan qolgan sandbox konteynerlarini tozalaymiz.
+        #
+        # Asosiy tozalash scheduler'da (u davriy va klasterda yagona), lekin
+        # ishga tushish ayni qulashdan KEYIN bo'ladi — qoldiq eng ehtimolli
+        # payt shu. Scheduler o'chiq bo'lsa ham qoldiq yotib qolmasligi
+        # uchun shu yerda ham bir marta chaqiriladi.
+        #
+        # Xato yutiladi: tozalanmagan konteyner noqulaylik, worker'ning
+        # ishga tushmasligi esa to'xtalish.
+        with contextlib.suppress(Exception):
+            removed = await Executor().cleanup_orphans()
+            if removed:
+                logger.info("worker_pool.orphans_cleaned", removed=removed)
 
     async def tick(self) -> None:
         """Nazorat sikli: barcha nazoratchi tugagan bo'lsa pool to'xtaydi.

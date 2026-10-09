@@ -45,6 +45,7 @@ import shutil
 import tempfile
 import time
 from collections.abc import Awaitable, Callable
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Final
 
@@ -164,6 +165,15 @@ KILL_GRACE_SECONDS: Final[float] = max(0.1, settings.SANDBOX_KILL_GRACE_SECONDS)
 LIVE_CONTAINER_STATUSES: Final[frozenset[str]] = frozenset(
     {"running", "restarting", "paused", "removing"}
 )
+
+#: Ishlayotgan konteyner shuncha barobar MAX timeout'dan uzoq yashasa — egasiz.
+#:
+#: Har bir sandbox'ning qat'iy vaqt chegarasi bor va uni `TimeoutGuard`
+#: majburlaydi. Demak `MAX_TIMEOUT_SECONDS` dan uzoq yashayotgan konteyner
+#: normal holatda MAVJUD BO'LA OLMAYDI — uni o'ldirishi kerak bo'lgan worker
+#: o'lgan. Ikki barobar zaxira sekin mashina yoki og'ir yuklama uchun:
+#: cho'zilish normal, ikki barobar cho'zilish emas.
+ORPHAN_AGE_FACTOR: Final[int] = 2
 
 #: Bind-mount qilingan katalog huquqlari.
 #: Konteyner imtiyozsiz foydalanuvchi (`settings.SANDBOX_USER`, 10001) ostida
@@ -733,11 +743,36 @@ class SandboxManager:
             shutil.rmtree(workdir, ignore_errors=True)
 
     async def cleanup_orphans(self) -> int:
-        """Qolib ketgan (to'xtagan) Durabl konteynerlarini o'chiradi.
+        """Qolib ketgan Durabl konteynerlarini o'chiradi.
 
-        Faqat `durabl.managed=true` yorlig'i bo'lganlar ko'riladi — hostdagi
-        boshqa konteynerlarga TEGILMAYDI. Tirik konteynerlar ham chetlab
-        o'tiladi (boshqa worker ularni bajarayotgan bo'lishi mumkin).
+        ═══════════════════════════════════════════════════════════════════
+        IKKI TURDAGI QOLDIQ
+        ═══════════════════════════════════════════════════════════════════
+
+        Oddiy ishda qoldiq QOLMAYDI: `run()` ning `finally` qismi konteynerni
+        o'chiradi. Qoldiq faqat jarayon O'RTADA o'lganda paydo bo'ladi
+        (SIGKILL, OOM, deploy, konteyner qayta ishga tushirish) — unda
+        Python'ning `finally` bloki umuman ishlamaydi.
+
+        Shunda ikki xil qoldiq qoladi:
+
+        1. **To'xtagan** (`Exited`) — zararsiz, lekin to'planadi.
+        2. **Hamon ishlayotgan** — egasi o'lgan, o'zi esa tirik. Bu
+           ancha yomon: u xotira va CPU yeyishda davom etadi va hech kim
+           uni to'xtatmaydi.
+
+        Ilgari bu metod ikkinchi turni BUTUNLAY chetlab o'tardi ("tirik
+        bo'lsa, boshqa worker bajarayotgandir"). Natijada egasiz konteyner
+        abadiy qolardi.
+
+        Endi tirik konteyner YOSHIGA qarab hal qilinadi. Yosh ishonchli
+        belgi: har bir sandbox'ning qat'iy vaqt chegarasi bor, shuning
+        uchun `MAX_TIMEOUT_SECONDS × ORPHAN_AGE_FACTOR` dan uzoq yashagan
+        konteyner nazoratsiz qolgani aniq.
+
+        Xavfsizlik: faqat `durabl.managed=true` yorlig'i bo'lganlar
+        ko'riladi — hostdagi boshqa konteynerlarga TEGILMAYDI. Shu
+        menejerning O'Z konteyneri ham chetlab o'tiladi.
 
         Returns:
             O'chirilgan konteynerlar soni.
@@ -754,12 +789,28 @@ class SandboxManager:
             return 0
 
         current_id = getattr(self._container, "id", None)
+        max_age = settings.MAX_TIMEOUT_SECONDS * ORPHAN_AGE_FACTOR
         removed = 0
+        killed_alive = 0
+
         for container in containers:
-            if getattr(container, "status", "") in LIVE_CONTAINER_STATUSES:
-                continue
             if current_id is not None and container.id == current_id:
                 continue
+
+            alive = getattr(container, "status", "") in LIVE_CONTAINER_STATUSES
+            if alive:
+                age = _container_age_seconds(container)
+                # Yoshini aniqlay olmasak TEGMAYMIZ: ishlayotgan job'ni
+                # xato bilan o'ldirgandan ko'ra qoldiqni qoldirgan afzal.
+                if age is None or age < max_age:
+                    continue
+                logger.warning(
+                    "egasiz sandbox konteyneri topildi — o'ldiriladi",
+                    container_id=str(container.id or "")[:SANDBOX_ID_LENGTH],
+                    age_seconds=int(age),
+                    max_age_seconds=max_age,
+                )
+
             try:
                 await asyncio.to_thread(container.remove, force=True)
             except (NotFound, *DOCKER_ERRORS) as exc:
@@ -770,9 +821,15 @@ class SandboxManager:
                 )
                 continue
             removed += 1
+            if alive:
+                killed_alive += 1
 
         if removed:
-            logger.info("orphan konteynerlar o'chirildi", count=removed)
+            logger.info(
+                "orphan konteynerlar o'chirildi",
+                count=removed,
+                killed_while_running=killed_alive,
+            )
         return removed
 
     async def close(self) -> None:
@@ -867,6 +924,44 @@ def _open_log_stream(container: Any) -> tuple[Any, bool]:
         )
         return container.logs(stream=True, follow=True, stdout=True, stderr=True), False
     return stream, True
+
+
+def _container_age_seconds(container: Any) -> float | None:
+    """Konteyner necha soniya oldin ishga tushgan.
+
+    `State.StartedAt` ishlatiladi, `Created` emas: yaratilgan, lekin ishga
+    tushmagan konteyner vaqt chegarasini sarflamaydi, shuning uchun uning
+    yoshi bizni qiziqtirmaydi.
+
+    Docker vaqtni RFC 3339 da beradi (`2026-10-09T17:12:02.123456789Z`).
+    Python 3.11+ `fromisoformat()` ni `Z` bilan tushunadi, lekin
+    nanosoniyalarni TUSHUNMAYDI — shuning uchun kasr qismi 6 raqamga
+    qisqartiriladi.
+
+    Returns:
+        Soniyalardagi yosh, yoki aniqlab bo'lmasa `None`. `None` holatida
+        chaqiruvchi konteynerga TEGMASLIGI kerak — ishlayotgan job'ni xato
+        bilan o'ldirish qoldiqdan ko'ra qimmatroq.
+    """
+    raw = (getattr(container, "attrs", None) or {}).get("State", {}).get("StartedAt")
+    if not isinstance(raw, str) or not raw:
+        return None
+    text = raw.replace("Z", "+00:00")
+    if "." in text:
+        head, _, tail = text.partition(".")
+        digits = "".join(ch for ch in tail if ch.isdigit())[:6]
+        offset = tail[len(digits) :].lstrip("0123456789") if tail else ""
+        text = f"{head}.{digits}{offset}" if digits else head + offset
+    try:
+        started = datetime.fromisoformat(text)
+    except ValueError:
+        return None
+    if started.tzinfo is None:
+        started = started.replace(tzinfo=UTC)
+    # Docker ishga tushmagan konteyner uchun nol vaqt qaytaradi.
+    if started.year < 2000:
+        return None
+    return (datetime.now(UTC) - started).total_seconds()
 
 
 def _pump_logs(
