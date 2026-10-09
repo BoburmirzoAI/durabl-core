@@ -124,9 +124,7 @@ def create_token(
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
 
 
-def create_access_token(
-    subject: str | uuid.UUID, **kwargs: Any
-) -> str:
+def create_access_token(subject: str | uuid.UUID, **kwargs: Any) -> str:
     """Qisqa muddatli access token."""
     return create_token(subject, token_type="access", **kwargs)
 
@@ -187,10 +185,10 @@ class GeneratedApiKey:
     __slots__ = ("key_hash", "key_prefix", "last_four", "raw")
 
     def __init__(self, raw: str, key_hash: str, key_prefix: str, last_four: str) -> None:
-        self.raw = raw            #: To'liq kalit — faqat yaratilganda ko'rsatiladi
+        self.raw = raw  #: To'liq kalit — faqat yaratilganda ko'rsatiladi
         self.key_hash = key_hash  #: DB'ga saqlanadi
         self.key_prefix = key_prefix  #: Ro'yxatda ko'rsatish uchun
-        self.last_four = last_four    #: `durabl_ab...wxyz` ko'rinishi uchun
+        self.last_four = last_four  #: `durabl_ab...wxyz` ko'rinishi uchun
 
     def masked(self) -> str:
         """Ro'yxatda ko'rsatiladigan niqoblangan ko'rinish."""
@@ -209,9 +207,25 @@ def generate_api_key() -> GeneratedApiKey:
     )
 
 
+def sha256_hex(value: str) -> str:
+    """Matnni SHA-256 bilan hash qiladi (64 belgili hex).
+
+    Sessiya refresh tokeni va 2FA tiklash kodlari uchun. **bcrypt EMAS**:
+    bu qiymatlar DB'da QIDIRILADI (`WHERE token_hash = ?`), bcrypt esa
+    har safar boshqa natija beradi, ya'ni indeks bo'yicha qidirish
+    imkonsiz bo'lardi. Parol uchun esa aksincha — `hash_password()`
+    ishlatiladi, chunki parol qidirilmaydi, taqqoslanadi.
+
+    Xavfsizlik jihati: bu qiymatlar 32 baytli tasodifiy tokenlar, ya'ni
+    lug'at hujumiga chidamli — parol kabi kuchsiz emas, shuning uchun
+    tez hash yetarli.
+    """
+    return hashlib.sha256(value.strip().encode("utf-8")).hexdigest()
+
+
 def hash_api_key(raw_key: str) -> str:
     """API kalitni SHA-256 bilan hash qiladi (DB'da qidirish uchun deterministik)."""
-    return hashlib.sha256(raw_key.strip().encode("utf-8")).hexdigest()
+    return sha256_hex(raw_key)
 
 
 def is_api_key_format(value: str) -> bool:
@@ -323,6 +337,7 @@ __all__ = [
     "hash_password",
     "is_api_key_format",
     "mask_api_key",
+    "sha256_hex",
     "sign_webhook",
     "token_subject",
     "validate_password_strength",

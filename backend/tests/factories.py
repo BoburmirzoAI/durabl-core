@@ -26,20 +26,27 @@ identifikatorini uzatish SHART (aks holda FK cheklovi buziladi).
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 from app.config import settings
 from app.constants import (
     AuditAction,
     DeliveryStatus,
+    DeviceType,
     ExecutionStatus,
     FailureReason,
     JobStatus,
+    LoginMethod,
+    LoginResult,
     LogStream,
+    NotificationKind,
+    NotificationSeverity,
     PlanType,
     Priority,
     Runtime,
+    ScheduleRunStatus,
+    ScheduleStatus,
     WebhookEvent,
 )
 from app.execution.types import ExecutionResult, LogEntry, ResourceLimits, SandboxSpec
@@ -50,9 +57,15 @@ from app.models import (
     Execution,
     ExecutionLog,
     Job,
+    LoginEvent,
+    Notification,
+    RecoveryCode,
+    Schedule,
+    ScheduleRun,
     Subscription,
     UsageRecord,
     User,
+    UserSession,
     Webhook,
     WebhookDelivery,
 )
@@ -62,6 +75,7 @@ from app.utils.security import (
     generate_webhook_secret,
     hash_api_key,
     hash_password,
+    sha256_hex,
 )
 from app.utils.time_utils import month_key, utcnow
 
@@ -611,6 +625,248 @@ def make_log_entry(
     )
 
 
+# ---------------------------------------------------------------------------
+# Jadvallar (cron)
+# ---------------------------------------------------------------------------
+
+
+def make_schedule(
+    *,
+    id: uuid.UUID | None = None,
+    user_id: uuid.UUID | None = None,
+    name: str | None = None,
+    description: str | None = "Test schedule",
+    cron: str = "*/15 * * * *",
+    timezone: str = "UTC",
+    next_run_at: datetime | None = None,
+    allow_overlap: bool = False,
+    runtime: Runtime = Runtime.PYTHON,
+    code: str = DEFAULT_CODE,
+    payload: dict[str, Any] | None = None,
+    env_vars: dict[str, str] | None = None,
+    priority: Priority = Priority.NORMAL,
+    timeout_seconds: int | None = None,
+    memory_mb: int | None = None,
+    max_retries: int = 0,
+    status: ScheduleStatus = ScheduleStatus.ACTIVE,
+    last_run_at: datetime | None = None,
+    last_run_status: str | None = None,
+    consecutive_failures: int = 0,
+    total_runs: int = 0,
+    failed_runs: int = 0,
+    deleted_at: datetime | None = None,
+) -> Schedule:
+    """`Schedule` obyektini yasaydi.
+
+    `name` berilmasa takrorlanmas nom yasaladi: `uq_schedules_user_id_name`
+    cheklovi bitta foydalanuvchida bir xil nomni taqiqlaydi, ya'ni ikki
+    marta `make_schedule(user_id=u.id)` chaqirilsa standart nom bilan
+    ikkinchisi yiqilardi.
+    """
+    schedule = Schedule(
+        user_id=user_id or uuid.uuid4(),
+        name=name or f"schedule-{_next_index()}",
+        description=description,
+        cron=cron,
+        timezone=timezone,
+        next_run_at=next_run_at,
+        allow_overlap=allow_overlap,
+        runtime=runtime,
+        code=code,
+        payload=payload,
+        env_vars=env_vars,
+        priority=priority,
+        timeout_seconds=timeout_seconds or settings.DEFAULT_TIMEOUT_SECONDS,
+        memory_mb=memory_mb or settings.SANDBOX_MEMORY_MB,
+        max_retries=max_retries,
+        status=status,
+        last_run_at=last_run_at,
+        last_run_status=last_run_status,
+        consecutive_failures=consecutive_failures,
+        total_runs=total_runs,
+        failed_runs=failed_runs,
+        deleted_at=deleted_at,
+    )
+    if id is not None:
+        schedule.id = id
+    return schedule
+
+
+def make_schedule_run(
+    *,
+    id: uuid.UUID | None = None,
+    schedule_id: uuid.UUID | None = None,
+    job_id: uuid.UUID | None = None,
+    scheduled_for: datetime | None = None,
+    started_at: datetime | None = None,
+    finished_at: datetime | None = None,
+    duration_ms: int | None = None,
+    status: ScheduleRunStatus = ScheduleRunStatus.SUCCEEDED,
+    skip_reason: str | None = None,
+    error_message: str | None = None,
+) -> ScheduleRun:
+    """`ScheduleRun` obyektini yasaydi (standart — muvaffaqiyatli ishga tushish).
+
+    `job_id` ataylab `None` qoladi: `uuid4()` yasash FK cheklovini buzadi,
+    chunki bunday job mavjud emas.
+    """
+    run = ScheduleRun(
+        schedule_id=schedule_id or uuid.uuid4(),
+        job_id=job_id,
+        scheduled_for=scheduled_for or utcnow(),
+        started_at=started_at,
+        finished_at=finished_at,
+        duration_ms=duration_ms,
+        status=status,
+        skip_reason=skip_reason,
+        error_message=error_message,
+    )
+    if id is not None:
+        run.id = id
+    return run
+
+
+# ---------------------------------------------------------------------------
+# Hisob xavfsizligi: sessiyalar, kirish jurnali, tiklash kodlari
+# ---------------------------------------------------------------------------
+
+
+def make_session(
+    *,
+    id: uuid.UUID | None = None,
+    user_id: uuid.UUID | None = None,
+    token: str | None = None,
+    token_hash: str | None = None,
+    expires_at: datetime | None = None,
+    revoked_at: datetime | None = None,
+    browser: str | None = "Chrome",
+    os: str | None = "macOS",
+    device_type: DeviceType = DeviceType.DESKTOP,
+    user_agent: str | None = None,
+    ip_address: str | None = "203.0.113.10",
+    location: str | None = "Tashkent, UZ",
+    last_active_at: datetime | None = None,
+) -> UserSession:
+    """`UserSession` obyektini yasaydi.
+
+    `token` berilsa uning hashi hisoblanadi; `token_hash` to'g'ridan-to'g'ri
+    ham berilishi mumkin. Ikkisi ham berilmasa takrorlanmas hash yasaladi.
+    """
+    if token_hash is None:
+        token_hash = sha256_hex(token or f"test-refresh-token-{_next_index()}")
+    now = utcnow()
+    session = UserSession(
+        user_id=user_id or uuid.uuid4(),
+        token_hash=token_hash,
+        expires_at=expires_at or now + timedelta(days=7),
+        revoked_at=revoked_at,
+        browser=browser,
+        os=os,
+        device_type=device_type,
+        user_agent=user_agent,
+        ip_address=ip_address,
+        location=location,
+        last_active_at=last_active_at or now,
+    )
+    if id is not None:
+        session.id = id
+    return session
+
+
+def make_login_event(
+    *,
+    id: uuid.UUID | None = None,
+    user_id: uuid.UUID | None = None,
+    email: str | None = None,
+    occurred_at: datetime | None = None,
+    result: LoginResult = LoginResult.SUCCESS,
+    method: LoginMethod = LoginMethod.PASSWORD,
+    detail: str | None = None,
+    ip_address: str | None = "203.0.113.10",
+    location: str | None = "Tashkent, UZ",
+    browser: str | None = "Chrome",
+    os: str | None = "macOS",
+) -> LoginEvent:
+    """`LoginEvent` obyektini yasaydi.
+
+    `user_id` ataylab `None` bo'lishi mumkin — "bunday foydalanuvchi yo'q"
+    urinishi ham yoziladi.
+    """
+    event = LoginEvent(
+        user_id=user_id,
+        email=email or unique_email(),
+        occurred_at=occurred_at or utcnow(),
+        result=result,
+        method=method,
+        detail=detail,
+        ip_address=ip_address,
+        location=location,
+        browser=browser,
+        os=os,
+    )
+    if id is not None:
+        event.id = id
+    return event
+
+
+def make_recovery_code(
+    *,
+    id: uuid.UUID | None = None,
+    user_id: uuid.UUID | None = None,
+    code: str | None = None,
+    code_hash: str | None = None,
+    used_at: datetime | None = None,
+    used_from_ip: str | None = None,
+) -> RecoveryCode:
+    """`RecoveryCode` obyektini yasaydi (standart — ishlatilmagan)."""
+    if code_hash is None:
+        code_hash = sha256_hex(code or f"recovery-{_next_index()}")
+    recovery = RecoveryCode(
+        user_id=user_id or uuid.uuid4(),
+        code_hash=code_hash,
+        used_at=used_at,
+        used_from_ip=used_from_ip,
+    )
+    if id is not None:
+        recovery.id = id
+    return recovery
+
+
+# ---------------------------------------------------------------------------
+# Bildirishnomalar
+# ---------------------------------------------------------------------------
+
+
+def make_notification(
+    *,
+    id: uuid.UUID | None = None,
+    user_id: uuid.UUID | None = None,
+    kind: NotificationKind = NotificationKind.JOB_FAILED,
+    severity: NotificationSeverity = NotificationSeverity.WARNING,
+    title: str = "Job failed",
+    body: str = "Your job finished with a non-zero exit code.",
+    href: str | None = None,
+    read_at: datetime | None = None,
+    source_type: str | None = None,
+    source_id: uuid.UUID | None = None,
+) -> Notification:
+    """`Notification` obyektini yasaydi (standart — o'qilmagan)."""
+    notification = Notification(
+        user_id=user_id or uuid.uuid4(),
+        kind=kind,
+        severity=severity,
+        title=title,
+        body=body,
+        href=href,
+        read_at=read_at,
+        source_type=source_type,
+        source_id=source_id,
+    )
+    if id is not None:
+        notification.id = id
+    return notification
+
+
 __all__ = [
     "DEFAULT_CODE",
     "DEFAULT_PASSWORD",
@@ -624,7 +880,13 @@ __all__ = [
     "make_limits",
     "make_log",
     "make_log_entry",
+    "make_login_event",
+    "make_notification",
+    "make_recovery_code",
     "make_sandbox_spec",
+    "make_schedule",
+    "make_schedule_run",
+    "make_session",
     "make_subscription",
     "make_usage",
     "make_user",

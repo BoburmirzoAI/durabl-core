@@ -219,6 +219,87 @@ class WorkerState(StrEnum):
     DEAD = "dead"  # Heartbeat kelmay qoldi
 
 
+class ScheduleStatus(StrEnum):
+    """Cron jadvalining holati.
+
+    `ERRORED` — mijoz emas, TIZIM qo'ygan holat: ketma-ket
+    `SCHEDULE_FAILURE_THRESHOLD` marta muvaffaqiyatsiz bo'lgandan keyin
+    jadval o'zi to'xtaydi (`webhooks.disabled_at` bilan bir xil mantiq).
+    """
+
+    ACTIVE = "active"
+    PAUSED = "paused"    # Mijoz to'xtatdi
+    ERRORED = "errored"  # Tizim to'xtatdi
+
+
+class ScheduleRunStatus(StrEnum):
+    """Jadval bo'yicha bitta ishga tushishning natijasi.
+
+    Qiymatlar `JobStatus` bilan ATAYLAB bir xil nomlanadi, ustiga
+    `SKIPPED` qo'shiladi: `allow_overlap=False` bo'lib oldingi ishga
+    tushish hamon davom etayotgan bo'lsa, job yaratilmaydi — lekin
+    "nega ishlamadi?" savoliga javob qolishi uchun yozuv yoziladi.
+    """
+
+    QUEUED = "queued"
+    RUNNING = "running"
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+    SKIPPED = "skipped"
+
+
+class NotificationKind(StrEnum):
+    """Ilova ichidagi bildirishnoma turi — ikonka va havolani belgilaydi."""
+
+    JOB_FAILED = "job_failed"
+    JOB_SUCCEEDED = "job_succeeded"
+    DLQ_ENTRY = "dlq_entry"
+    WEBHOOK_FAILED = "webhook_failed"
+    WORKER_DOWN = "worker_down"
+    QUOTA_WARNING = "quota_warning"
+    API_KEY_CREATED = "api_key_created"
+    SYSTEM = "system"
+
+
+class NotificationSeverity(StrEnum):
+    """Bildirishnomaning muhimlik darajasi."""
+
+    INFO = "info"
+    WARNING = "warning"
+    CRITICAL = "critical"
+
+
+class LoginResult(StrEnum):
+    """Kirish urinishining natijasi (xavfsizlik jurnali).
+
+    Muvaffaqiyatsiz urinishlar ham YOZILADI — buzilgan hisobni aniqlashda
+    eng kerakli ma'lumot aynan shu.
+    """
+
+    SUCCESS = "success"
+    FAILED_PASSWORD = "failed_password"
+    FAILED_2FA = "failed_2fa"
+    BLOCKED = "blocked"  # Hisob faol emas yoki rate limit
+
+
+class LoginMethod(StrEnum):
+    """Kirish qanday amalga oshdi."""
+
+    PASSWORD = "password"
+    PASSWORD_2FA = "password+2fa"
+    API_KEY = "api_key"
+
+
+class DeviceType(StrEnum):
+    """Sessiya qanday qurilmadan ochilgan (User-Agent'dan aniqlanadi)."""
+
+    DESKTOP = "desktop"
+    MOBILE = "mobile"
+    TABLET = "tablet"
+    API = "api"  # Brauzer emas — SDK yoki curl
+
+
 # ---------------------------------------------------------------------------
 # Reja limitlari (billing + rate limit)
 # ---------------------------------------------------------------------------
@@ -473,15 +554,22 @@ __all__ = [
     "SANDBOX_WORKDIR",
     "AuditAction",
     "DeliveryStatus",
+    "DeviceType",
     "ExecutionStatus",
     "FailureReason",
     "JobStatus",
     "LogStream",
+    "LoginMethod",
+    "LoginResult",
+    "NotificationKind",
+    "NotificationSeverity",
     "PlanLimits",
     "PlanType",
     "Priority",
     "RedisKeys",
     "Runtime",
+    "ScheduleRunStatus",
+    "ScheduleStatus",
     "StrEnum",
     "WebhookEvent",
     "WorkerState",

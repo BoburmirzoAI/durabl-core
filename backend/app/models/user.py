@@ -25,8 +25,13 @@ if TYPE_CHECKING:  # pragma: no cover - faqat tip tekshiruvi uchun
     from app.models.api_key import ApiKey
     from app.models.dlq_entry import DlqEntry
     from app.models.job import Job
+    from app.models.login_event import LoginEvent
+    from app.models.notification import Notification
+    from app.models.recovery_code import RecoveryCode
+    from app.models.schedule import Schedule
     from app.models.subscription import Subscription
     from app.models.usage_record import UsageRecord
+    from app.models.user_session import UserSession
     from app.models.webhook import Webhook
 
 
@@ -62,6 +67,23 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
     #: Oxirgi muvaffaqiyatli login vaqti (`AuthService.login` yangilaydi)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTimeTZ, nullable=True)
+
+    # ------------------------------------------------------------------
+    # Ikki bosqichli tasdiqlash (2FA)
+    # ------------------------------------------------------------------
+
+    #: TOTP maxfiy kaliti (base32). `NULL` — 2FA hech sozlanmagan.
+    #:
+    #: DIQQAT: bu ustun `two_factor_enabled_at IS NULL` bo'lganda ham
+    #: to'ldirilgan bo'lishi mumkin — mijoz sozlashni boshlab, QR kodni
+    #: olib, lekin birinchi kodni tasdiqlamagan holat. Shuning uchun
+    #: "2FA yoqilganmi?" savoliga `totp_secret` EMAS,
+    #: `two_factor_enabled_at` javob beradi.
+    totp_secret: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    #: 2FA qachon YOQILGAN (tasdiqlangan). Yagona haqiqat manbasi.
+    two_factor_enabled_at: Mapped[datetime | None] = mapped_column(
+        DateTimeTZ, nullable=True
+    )
 
     # ------------------------------------------------------------------
     # Bog'lanishlar
@@ -113,6 +135,42 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+    schedules: Mapped[list[Schedule]] = relationship(
+        "Schedule",
+        back_populates="user",
+        lazy="raise",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    sessions: Mapped[list[UserSession]] = relationship(
+        "UserSession",
+        back_populates="user",
+        lazy="raise",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    recovery_codes: Mapped[list[RecoveryCode]] = relationship(
+        "RecoveryCode",
+        back_populates="user",
+        lazy="raise",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    notifications: Mapped[list[Notification]] = relationship(
+        "Notification",
+        back_populates="user",
+        lazy="raise",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    #: Kirish jurnali — `SET NULL`, ya'ni foydalanuvchi o'chirilsa
+    #: yozuvlar QOLADI (cascade YO'Q, `audit_logs` bilan bir xil mantiq)
+    login_events: Mapped[list[LoginEvent]] = relationship(
+        "LoginEvent",
+        back_populates="user",
+        lazy="raise",
+        passive_deletes=True,
+    )
 
     # ------------------------------------------------------------------
     # Yordamchi xossalar
@@ -127,6 +185,11 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     def has_logged_in(self) -> bool:
         """Foydalanuvchi hech bo'lmasa bir marta kirganmi?"""
         return self.last_login_at is not None
+
+    @property
+    def has_two_factor(self) -> bool:
+        """2FA haqiqatan yoqilganmi (sozlash boshlangani yetmaydi)."""
+        return self.two_factor_enabled_at is not None
 
 
 __all__ = ["User"]
