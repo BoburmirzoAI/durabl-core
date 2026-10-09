@@ -1,0 +1,26 @@
+# =============================================================================
+# Durabl — Grafana dashboard provisioning
+#
+# Joylashuvi (konteynerda): /etc/grafana/provisioning/dashboards/dashboards.yml
+# `path` — dashboard JSON fayllari (docker-compose `infra/grafana/dashboards`
+# katalogini shu yerga mount qiladi).
+# =============================================================================
+
+apiVersion: 1
+
+providers:
+  - name: durabl
+    orgId: 1
+    #: Dashboard'lar joylashadigan papka nomi (Grafana UI'da ko'rinadi)
+    folder: Durabl
+    type: file
+    #: UI'dan o'chirilsa — provisioning uni qaytaradi
+    disableDeletion: false
+    #: Fayl o'zgarishini qancha vaqtda tekshirish (soniya)
+    updateIntervalSeconds: 30
+    #: UI'dan tahrirlashga ruxsat (saqlasa fayl ustiga yozilmaydi)
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards
+      #: Papka tuzilmasi Grafana'da ham saqlanadi
+      foldersFromFilesStructure: false

@@ -1,0 +1,83 @@
+# =============================================================================
+# Durabl worker — fon ishchilari (worker_pool, scheduler, dlq_processor,
+# webhook_sender) uchun image.
+#
+# API image'dan farqi:
+#   * HTTP port yo'q (EXPOSE/HEALTHCHECK HTTP so'rovi yo'q)
+#   * `docker` CLI o'rnatilgan — sandbox konteynerlarini kuzatish/tozalash uchun
+#     (Python `docker` SDK socket orqali ishlaydi, CLI diagnostika uchun kerak)
+#
+# Build: docker build -t durabl/worker:latest -f backend/Dockerfile.worker backend
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# 1-qatlam: builder — API image bilan ayni (kesh ham umumiy bo'ladi)
+# -----------------------------------------------------------------------------
+FROM python:3.12-slim AS builder
+
+ENV PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+COPY requirements.txt ./
+RUN pip install --upgrade pip setuptools wheel \
+    && pip install -r requirements.txt
+
+# -----------------------------------------------------------------------------
+# 2-qatlam: runtime
+# -----------------------------------------------------------------------------
+FROM python:3.12-slim AS runtime
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONFAULTHANDLER=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PATH="/opt/venv/bin:$PATH" \
+    PYTHONPATH=/app \
+    TZ=UTC
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        curl \
+        tini \
+    && rm -rf /var/lib/apt/lists/*
+
+#: Docker CLI — statik binar rasmiy image'dan ko'chiriladi (demon o'rnatilmaydi).
+#  Worker host'ning `/var/run/docker.sock` fayli orqali sandbox yaratadi.
+COPY --from=docker:27-cli /usr/local/bin/docker /usr/local/bin/docker
+
+#: Docker socket guruhi — GID host bilan mos bo'lishi kerak.
+#  Linux'da: `DOCKER_GID=$(getent group docker | cut -d: -f3) docker compose build`
+ARG DOCKER_GID=999
+
+RUN groupadd --gid 10001 durabl \
+    && useradd --uid 10001 --gid 10001 --create-home --shell /bin/bash durabl \
+    && (groupadd --gid "${DOCKER_GID}" dockersock || true) \
+    && usermod --append --groups "${DOCKER_GID}" durabl
+
+COPY --from=builder /opt/venv /opt/venv
+
+WORKDIR /app
+
+COPY --chown=durabl:durabl . /app
+
+USER durabl
+
+#: Worker tirikligi Redis registry'si orqali kuzatiladi (`WORKER_REGISTRY_TTL_SECONDS`),
+#  shuning uchun konteyner darajasida HTTP healthcheck yo'q — protsess mavjudligini
+#  tekshiramiz (python protsessi o'lsa konteyner ham tugaydi).
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD python -c "import sys; sys.exit(0)" || exit 1
+
+ENTRYPOINT ["/usr/bin/tini", "--"]
+
+#: Standart — worker pool. Boshqa ishchilar compose'da `command` bilan almashtiriladi.
+CMD ["python", "-m", "app.workers.worker_pool"]

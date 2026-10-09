@@ -1,0 +1,327 @@
+# =============================================================================
+# Durabl — production override (asosiy `docker-compose.yml` ustiga qo'yiladi)
+#
+# Ishga tushirish:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# Asosiy farqlar:
+#   * `--reload` yo'q — uvicorn ko'p worker protsessi bilan ishlaydi
+#   * kod `volume` bilan mount QILINMAYDI — image ichida (`!reset []`)
+#   * nginx — yagona tashqi kirish nuqtasi (80/443), qolgan portlar yopiq
+#   * worker 3 nusxada (`replicas: 3`), resurs limitlari o'rnatilgan
+#   * sandbox gVisor (`runsc`) runtime'da ishlaydi
+#   * Prometheus va Grafana doimiy yoqilgan (profil shart emas)
+#   * loglar json-file driver bilan aylanadi (max-size/max-file)
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Umumiy bloklar
+# -----------------------------------------------------------------------------
+
+#: Log aylanishi — disk to'lib ketmasligi uchun har bir konteynerda cheklangan
+x-logging: &logging
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+#: Production muhit o'zgaruvchilari (asosiy fayldagi qiymatlar ustiga qo'shiladi)
+x-prod-env: &prod-env
+  environment:
+    ENV: production
+    DEBUG: "false"
+    # Production'da hujjatlar yopiq (ichki tarmoqdan ko'rish uchun yoqish mumkin)
+    ENABLE_DOCS: ${ENABLE_DOCS:-false}
+    LOG_FORMAT: json
+    LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    # Kod gVisor sandbox ichida bajariladi — ikkinchi kernel devori
+    SANDBOX_ENABLED: "true"
+    SANDBOX_RUNTIME: ${SANDBOX_RUNTIME:-runsc}
+    # Beshinchi himoya qatlami: syscall oq ro'yxati. Profil worker ichida
+    # O'QILADI va MAZMUNI Docker API'ga uzatiladi (yo'l emas — API yo'lni JSON
+    # deb parse qilib konteynerni ishga tushirmaydi). Fayl `worker-common`
+    # volumes orqali barcha worker'larga mount qilinadi.
+    # DIQQAT: bu qiymat shu UMUMIY anchor'da turishi SHART — servis ichida
+    # alohida `environment:` yozilsa YAML `<<:` merge'i chuqur birlashtirmaydi
+    # va anchor'ning butun bloki (SANDBOX_ENABLED ham) yo'qoladi.
+    SANDBOX_SECCOMP_PROFILE: /etc/durabl/seccomp-profile.json
+    # Ulanish hovuzi production yuklamasi uchun kattalashtirildi
+    DB_POOL_SIZE: ${DB_POOL_SIZE:-20}
+    DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:-40}
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL — port tashqariga chiqarilmaydi (faqat ichki `durabl` tarmog'i)
+  # ---------------------------------------------------------------------------
+  postgres:
+    <<: *logging
+    ports: !reset []
+    command:
+      - postgres
+      - -c
+      - max_connections=200
+      - -c
+      - shared_buffers=512MB
+      - -c
+      - effective_cache_size=1536MB
+      - -c
+      - work_mem=8MB
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+
+  # ---------------------------------------------------------------------------
+  # Redis — navbat. `appendonly` + xotira siyosati: navbat o'chirilmasligi shart,
+  # shuning uchun `noeviction` (xotira tugasa yozishni rad etadi, lekin yo'qotmaydi)
+  # ---------------------------------------------------------------------------
+  redis:
+    <<: *logging
+    ports: !reset []
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --appendfsync
+      - everysec
+      - --maxmemory
+      - ${REDIS_MAXMEMORY:-1gb}
+      - --maxmemory-policy
+      - noeviction
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1536M
+        reservations:
+          memory: 256M
+
+  # ---------------------------------------------------------------------------
+  # Migratsiya — kod image ichida, volume kerak emas
+  # ---------------------------------------------------------------------------
+  migrate:
+    <<: [*logging, *prod-env]
+    volumes: !reset []
+
+  # ---------------------------------------------------------------------------
+  # API — uvicorn ko'p worker bilan. Tashqariga faqat nginx orqali chiqadi.
+  # `--proxy-headers` — nginx uzatgan X-Forwarded-* header'lariga ishonadi.
+  # ---------------------------------------------------------------------------
+  api:
+    <<: [*logging, *prod-env]
+    command:
+      - uvicorn
+      - app.main:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --workers
+      - ${API_WORKERS:-4}
+      - --proxy-headers
+      - --forwarded-allow-ips
+      - "*"
+      - --no-server-header
+      - --timeout-keep-alive
+      - "30"
+    volumes: !reset []
+    ports: !reset []
+    expose:
+      - "8000"
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1536M
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+
+  # ---------------------------------------------------------------------------
+  # Worker pool — 3 nusxa. `container_name` o'chiriladi, aks holda
+  # `replicas` bilan ziddiyat bo'ladi (bir nom — bir konteyner).
+  # Docker socket qoladi: sandbox konteynerlarini worker yaratadi.
+  # ---------------------------------------------------------------------------
+  worker:
+    <<: [*logging, *prod-env]
+    container_name: !reset null
+    volumes: !override
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./sandbox/gvisor/seccomp-profile.json:/etc/durabl/seccomp-profile.json:ro
+    deploy:
+      replicas: ${WORKER_REPLICAS:-3}
+      resources:
+        limits:
+          # Sandbox konteynerlari alohida hisoblanadi — bu limit worker protsessi uchun
+          cpus: "2.0"
+          memory: 1G
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+
+  # ---------------------------------------------------------------------------
+  # Scheduler — bitta nusxa yetarli (Redis lock bilan yagona ishlaydi)
+  # ---------------------------------------------------------------------------
+  scheduler:
+    <<: [*logging, *prod-env]
+    volumes: !reset []
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+
+  # ---------------------------------------------------------------------------
+  # DLQ processor
+  # ---------------------------------------------------------------------------
+  dlq-processor:
+    <<: [*logging, *prod-env]
+    volumes: !reset []
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+
+  # ---------------------------------------------------------------------------
+  # Webhook sender
+  # ---------------------------------------------------------------------------
+  webhook-sender:
+    <<: [*logging, *prod-env]
+    # Bir nechta nusxa ishlaganda nom unikal bo'lishi kerak — nomni olib tashlaymiz
+    container_name: !reset null
+    volumes: !reset []
+    deploy:
+      replicas: ${WEBHOOK_SENDER_REPLICAS:-2}
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+
+  # ---------------------------------------------------------------------------
+  # Frontend — Next.js standalone (`runner` target), build vaqtidagi API manzili
+  # ---------------------------------------------------------------------------
+  frontend:
+    <<: *logging
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: runner
+      args:
+        # Next.js `NEXT_PUBLIC_*` qiymatlarini build vaqtida kodga joylaydi
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.durabl.dev}
+        NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL:-wss://api.durabl.dev}
+        # Frontend hozir MOCK ma'lumot bilan ishlaydi — yuqoridagi manzillar
+        # bundle'ga joylanadi, lekin hali hech kim o'qimaydi.
+        NEXT_PUBLIC_MOCK_LATENCY_MS: ${NEXT_PUBLIC_MOCK_LATENCY_MS:-200}
+    environment:
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+    volumes: !reset []
+    ports: !reset []
+    expose:
+      - "3000"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 768M
+
+  # ---------------------------------------------------------------------------
+  # Nginx — reverse proxy: TLS tugatish, rate limit, statik keshlash.
+  # Sertifikatlar nomlangan volume'da (certbot shu volume'ga yozadi).
+  # ---------------------------------------------------------------------------
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: durabl-nginx
+    restart: unless-stopped
+    <<: *logging
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./infra/nginx/durabl.conf:/etc/nginx/conf.d/durabl.conf:ro
+      # TLS sertifikatlari (certbot/letsencrypt shu volume'ni to'ldiradi)
+      - nginx_certs:/etc/nginx/certs:ro
+      # ACME http-01 tekshiruvi uchun webroot
+      - certbot_webroot:/var/www/certbot
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1/nginx-health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      api:
+        condition: service_healthy
+      frontend:
+        condition: service_started
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 256M
+    networks:
+      - durabl
+
+  # ---------------------------------------------------------------------------
+  # Prometheus — production'da doimiy yoqilgan (`profiles` olib tashlanadi).
+  # Port faqat localhost'ga bog'lanadi: tashqaridan ko'rinmaydi.
+  # ---------------------------------------------------------------------------
+  prometheus:
+    <<: *logging
+    profiles: !reset []
+    ports: !override
+      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-30d}
+      - --web.enable-lifecycle
+      - --web.external-url=/prometheus/
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+
+  # ---------------------------------------------------------------------------
+  # Grafana — production'da doimiy yoqilgan
+  # ---------------------------------------------------------------------------
+  grafana:
+    <<: *logging
+    profiles: !reset []
+    ports: !override
+      - "127.0.0.1:${GRAFANA_PORT:-3001}:3000"
+    environment:
+      # !!! XAVFSIZLIK: .env ichida GRAFANA_ADMIN_PASSWORD'ni ALBATTA almashtiring —
+      # aks holda standart `admin` paroli ishlatiladi. Port faqat 127.0.0.1'ga
+      # bog'langan, shuning uchun unga faqat server ichidan (yoki SSH tunnel
+      # orqali) kirish mumkin.
+      GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-http://localhost:3001}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+
+# -----------------------------------------------------------------------------
+# Production'ga qo'shimcha volume'lar
+# -----------------------------------------------------------------------------
+volumes:
+  nginx_certs:
+    name: durabl_nginx_certs
+  certbot_webroot:
+    name: durabl_certbot_webroot

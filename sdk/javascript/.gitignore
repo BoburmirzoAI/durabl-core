@@ -1,0 +1,28 @@
+# Bog'liqliklar
+node_modules/
+.pnpm-store/
+
+# Qurilish natijalari
+dist/
+*.tsbuildinfo
+
+# Test va coverage
+coverage/
+.vitest/
+.vite/
+
+# Muhit va sirlar
+.env
+.env.*
+!.env.example
+
+# Muharrir va OS fayllari
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Paket arxivlari
+*.tgz
+npm-debug.log*
+yarn-error.log*

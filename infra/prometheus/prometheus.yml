@@ -1,0 +1,92 @@
+# =============================================================================
+# Durabl — Prometheus konfiguratsiyasi
+#
+# Metrikalar manbai: API (`app/metrics.py`) `/metrics` endpointida beradi:
+#   jobs_submitted_total, jobs_completed_total{status}, job_duration_seconds,
+#   queue_depth{priority}, dlq_depth, active_workers,
+#   webhook_deliveries_total{status}, http_requests_total{method,path,status},
+#   http_request_duration_seconds
+#
+# Tekshirish: promtool check config infra/prometheus/prometheus.yml
+# =============================================================================
+
+global:
+  #: Har 15 soniyada metrikalar yig'iladi (dashboard shu davriylikka moslangan)
+  scrape_interval: 15s
+  #: Qoidalar (alert/recording) shu davriylikda hisoblanadi
+  evaluation_interval: 15s
+  #: Bitta so'rovni kutish vaqti (scrape_interval'dan kichik bo'lishi kerak)
+  scrape_timeout: 10s
+  #: Barcha metrikalarga qo'shiladigan yorliqlar (bir nechta muhit bo'lsa foydali)
+  external_labels:
+    cluster: durabl
+    environment: development
+
+# -----------------------------------------------------------------------------
+# Alert qoidalari.
+# Fayl qo'shilsa shu yerda ro'yxatga olinadi (masalan: DLQ chuqurligi oshsa,
+# worker'lar yo'qolsa, xato darajasi ko'tarilsa).
+# -----------------------------------------------------------------------------
+rule_files: []
+# rule_files:
+#   - /etc/prometheus/rules/*.yml
+
+# -----------------------------------------------------------------------------
+# Alertmanager (o'rnatilsa izohdan chiqaring).
+# Durabl o'zi ham alert yuboradi (`NotificationService`), shuning uchun
+# Alertmanager majburiy emas.
+# -----------------------------------------------------------------------------
+alerting:
+  alertmanagers: []
+#  alertmanagers:
+#    - static_configs:
+#        - targets: ["alertmanager:9093"]
+
+# -----------------------------------------------------------------------------
+# Yig'ish (scrape) manbalari
+# -----------------------------------------------------------------------------
+scrape_configs:
+
+  # ---------------------------------------------------------------------------
+  # Durabl API — asosiy manba.
+  # `api` — docker-compose servis nomi (`durabl` tarmog'i ichida ishlaydi).
+  # ---------------------------------------------------------------------------
+  - job_name: durabl-api
+    metrics_path: /metrics
+    scheme: http
+    scrape_interval: 15s
+    static_configs:
+      - targets:
+          - api:8000
+        labels:
+          service: api
+          component: http
+    #: Metrika nomlarini o'zgartirmaymiz — dashboard shartnomadagi nomlarga tayanadi
+    metric_relabel_configs: []
+
+  # ---------------------------------------------------------------------------
+  # Prometheus o'zi (yig'ish sog'ligini kuzatish uchun)
+  # ---------------------------------------------------------------------------
+  - job_name: prometheus
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - localhost:9090
+        labels:
+          service: prometheus
+
+  # ---------------------------------------------------------------------------
+  # Qo'shimcha manbalar (o'rnatilgan bo'lsa izohdan chiqaring):
+  #   * node-exporter   — host CPU/RAM/disk
+  #   * postgres-exporter — baza ulanishlari, sekin so'rovlar
+  #   * redis-exporter  — navbat uzunligi, xotira
+  # ---------------------------------------------------------------------------
+  # - job_name: node
+  #   static_configs:
+  #     - targets: ["node-exporter:9100"]
+  # - job_name: postgres
+  #   static_configs:
+  #     - targets: ["postgres-exporter:9187"]
+  # - job_name: redis
+  #   static_configs:
+  #     - targets: ["redis-exporter:9121"]

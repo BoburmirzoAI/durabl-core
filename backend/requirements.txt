@@ -1,0 +1,35 @@
+# --- Web framework ---
+fastapi>=0.115.0
+uvicorn[standard]>=0.34.0
+python-multipart>=0.0.20
+
+# --- Validatsiya va sozlamalar ---
+pydantic>=2.10.0
+pydantic-settings>=2.7.0
+email-validator>=2.2.0
+
+# --- Ma'lumotlar bazasi (async) ---
+SQLAlchemy[asyncio]>=2.0.36
+asyncpg>=0.30.0
+alembic>=1.14.0
+greenlet>=3.1.0
+
+# --- Redis (navbat, lease, cache, pub/sub) ---
+redis>=5.2.0
+
+# --- Xavfsizlik ---
+PyJWT>=2.10.0
+bcrypt>=4.2.0
+
+# --- HTTP klient (webhook yuborish) ---
+httpx>=0.28.0
+
+# --- Logging va monitoring ---
+structlog>=24.4.0
+prometheus-client>=0.21.0
+
+# --- Cron (takrorlanuvchi job'lar) ---
+croniter>=5.0.0
+
+# --- Sandbox (Docker/gVisor boshqaruvi) ---
+docker>=7.1.0

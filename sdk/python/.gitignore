@@ -1,0 +1,52 @@
+# Python bayt-kodi
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Qurilish (build) natijalari
+build/
+dist/
+sdist/
+wheels/
+*.egg-info/
+*.egg
+.eggs/
+MANIFEST
+
+# Virtual muhitlar
+.venv/
+venv/
+env/
+ENV/
+
+# Test va qamrov (coverage)
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.tox/
+.nox/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+*.cover
+.hypothesis/
+
+# Muhit va maxfiy ma'lumot — API kalitlar hech qachon repozitoriyga tushmasligi kerak
+.env
+.env.*
+!.env.example
+
+# Tahrirlovchi va OS fayllari
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Vaqtinchalik fayllar
+*.log
+*.tmp
+payload.json

@@ -1,0 +1,123 @@
+{
+  "_izoh": [
+    "Durabl — gVisor (runsc) runtime sozlamalari.",
+    "runsc o'z sozlamasini bayroqlar (flag) orqali oladi, shuning uchun bu fayl",
+    "ikki vazifani bajaradi: (1) har bir bayroqni o'zbekcha izohlab qo'yadi,",
+    "(2) `runtimeArgs` ro'yxatini beradi — uni install.sh `runsc install` ga",
+    "uzatadi va daemon.json ichiga tushadi.",
+    "Qo'lda qo'llash: runsc install --runtime=runsc -- <runtimeArgs>"
+  ],
+  "version": 1,
+  "runtime": "runsc",
+  "binary": "/usr/local/bin/runsc",
+
+  "runtimeArgs": [
+    "--platform=systrap",
+    "--network=none",
+    "--overlay2=root:self",
+    "--file-access=exclusive",
+    "--watchdog-action=panic",
+    "--panic-signal=15",
+    "--ignore-cgroups=false"
+  ],
+
+  "settings": {
+    "platform": {
+      "value": "systrap",
+      "_izoh": [
+        "Syscall'larni ushlab olish usuli.",
+        "systrap — eng tezi va standarti (seccomp + SIGSYS asosida).",
+        "ptrace — eskirgan, sekin, lekin hamma joyda ishlaydi.",
+        "kvm — eng tez izolyatsiya, lekin /dev/kvm va nested virtualizatsiya kerak.",
+        "Durabl production'da: systrap."
+      ],
+      "alternatives": ["systrap", "ptrace", "kvm"]
+    },
+    "network": {
+      "value": "none",
+      "_izoh": [
+        "none    — tarmoq stek yo'q (mijoz kodi internetga chiqa olmaydi). Standart.",
+        "sandbox — gVisor o'zining netstack'i (host kernel tarmoq stekiga tegmaydi).",
+        "host    — host tarmoq stekidan foydalanadi (izolyatsiya pasayadi).",
+        "`restricted`/`full` tarmoq profillari uchun policies/network-policy.json ga qara;",
+        "ularda network=sandbox + docker tarmoq allowlist ishlatiladi."
+      ],
+      "alternatives": ["none", "sandbox", "host"]
+    },
+    "overlay2": {
+      "value": "root:self",
+      "_izoh": [
+        "Fayl tizimi yozuvlari overlay ichida ushlab qolinadi — mijoz kodi",
+        "haqiqiy image qatlamiga yoza olmaydi. `root:self` barcha yozuvni",
+        "sandbox xotirasida saqlaydi va konteyner tugashi bilan yo'q qiladi.",
+        "`/sandbox` bind-mount bo'lgani uchun overlay'dan tashqarida qoladi —",
+        "result.json shu tufayli backend'ga yetib boradi."
+      ],
+      "alternatives": ["none", "root:self", "root:/tmp", "all:self"]
+    },
+    "file-access": {
+      "value": "exclusive",
+      "_izoh": [
+        "exclusive — sandbox fayl tizimidan yakka foydalanadi, keshlash agressiv,",
+        "tezlik yuqori. Bitta job uchun bitta konteyner bo'lgani uchun xavfsiz.",
+        "shared — fayllar tashqaridan ham o'zgarishi mumkin deb hisoblanadi (sekinroq)."
+      ],
+      "alternatives": ["exclusive", "shared"]
+    },
+    "watchdog-action": {
+      "value": "panic",
+      "_izoh": [
+        "Sentry (gVisor yadrosi) qotib qolsa nima qilish kerak.",
+        "panic — sandbox darhol o'ladi, worker buni 'sandbox_error' deb qayd etadi",
+        "va job retry'ga tushadi. Durabl uchun to'g'ri tanlov: qotib turgan",
+        "konteyner lease'ni ushlab turishidan ko'ra tez o'lgani yaxshi.",
+        "logWarning — faqat log yozadi (diagnostika uchun)."
+      ],
+      "alternatives": ["panic", "logWarning"]
+    },
+    "panic-signal": {
+      "value": 15,
+      "_izoh": "SIGTERM (15) kelganda sentry stek izini chiqarib o'ladi — diagnostika uchun."
+    },
+    "ignore-cgroups": {
+      "value": false,
+      "_izoh": [
+        "false — cgroup limitlari (memory, cpu, pids) hurmat qilinadi.",
+        "Resurs limitlari shu orqali ishlaydi, shuning uchun o'chirilmasligi SHART."
+      ]
+    },
+    "debug": {
+      "value": false,
+      "_izoh": [
+        "Diagnostika uchun: --debug --debug-log=/var/log/runsc/ --strace.",
+        "Production'da HAR DOIM o'chirilgan: strace mijoz kodining barcha",
+        "syscall'larini yozadi (sekin + maxfiy ma'lumot log'ga tushishi mumkin)."
+      ]
+    }
+  },
+
+  "debug_profile": {
+    "_izoh": "Nosozlikni aniqlash uchun alohida runtime: docker run --runtime=runsc-debug ...",
+    "runtimeArgs": [
+      "--platform=systrap",
+      "--network=none",
+      "--debug",
+      "--debug-log=/var/log/runsc/",
+      "--strace",
+      "--log-packets"
+    ]
+  },
+
+  "compatibility": {
+    "_izoh": [
+      "gVisor Linux syscall'larining katta qismini qayta amalga oshiradi, lekin",
+      "hammasini emas. Durabl uchun amalda muhim bo'lgan cheklovlar:"
+    ],
+    "notes": [
+      "io_uring qo'llab-quvvatlanmaydi — Python/Node standart kutubxonasiga ta'sir qilmaydi.",
+      "Ba'zi `ptrace` va `perf_event_open` imkoniyatlari yo'q — profiler'lar ishlamaydi.",
+      "`/proc` va `/sys` qisman — ba'zi kutubxonalar CPU sonini noto'g'ri aniqlaydi.",
+      "Syscall'lar sentry orqali o'tgani uchun I/O'ga og'ir kod ~10-30% sekinroq ishlaydi."
+    ]
+  }
+}

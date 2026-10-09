@@ -1,0 +1,37 @@
+# =============================================================================
+# Durabl — Grafana datasource provisioning
+#
+# Joylashuvi (konteynerda): /etc/grafana/provisioning/datasources/prometheus.yml
+# Grafana ishga tushganda shu faylni o'qib datasource'ni avtomatik yaratadi
+# (qo'lda sozlash kerak emas).
+# =============================================================================
+
+apiVersion: 1
+
+#: Bu nomdagi datasource qayta provisioning'da o'chiriladi va yangilanadi
+deleteDatasources:
+  - name: Durabl Prometheus
+    orgId: 1
+
+datasources:
+  - name: Durabl Prometheus
+    type: prometheus
+    #: `uid` dashboard JSON ichida ishlatiladi — O'ZGARTIRILMASIN
+    uid: durabl-prometheus
+    access: proxy
+    #: `prometheus` — docker-compose servis nomi
+    url: http://prometheus:9090
+    orgId: 1
+    isDefault: true
+    editable: false
+    jsonData:
+      #: prometheus.yml dagi `scrape_interval` bilan bir xil bo'lishi kerak
+      timeInterval: 15s
+      httpMethod: POST
+      #: Grafana so'rovini kutish vaqti (soniya)
+      queryTimeout: 60s
+      #: PromQL imkoniyatlari uchun versiya (histogram_quantile, clamp_min va h.k.)
+      prometheusType: Prometheus
+      prometheusVersion: 2.54.1
+      #: Trace bog'lanishi kerak bo'lmasa — bo'sh
+      exemplarTraceIdDestinations: []

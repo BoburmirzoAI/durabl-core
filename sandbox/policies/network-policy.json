@@ -1,0 +1,172 @@
+{
+  "_izoh": [
+    "Durabl — sandbox tarmoq siyosati.",
+    "Uchta profil bor: none (standart), restricted, full.",
+    "Profil job darajasida tanlanadi: `SandboxSpec.allow_network` va",
+    "foydalanuvchi rejasi (`PlanLimits.allow_network`) hal qiladi.",
+    "Qoida: FREE rejada tarmoq butunlay yopiq — bu SSRF va kripto-mayning",
+    "uchun bepul resursdan foydalanishning oldini oladi."
+  ],
+  "version": 1,
+  "default_profile": "none",
+
+  "plan_defaults": {
+    "_izoh": "Reja -> ruxsat etilgan maksimal profil (app/constants.py: PLAN_LIMITS.allow_network).",
+    "free": "none",
+    "starter": "restricted",
+    "pro": "restricted",
+    "enterprise": "full"
+  },
+
+  "profiles": {
+    "none": {
+      "_izoh": [
+        "Tarmoq butunlay yo'q: konteynerda faqat loopback ham bo'lmaydi.",
+        "Mijoz kodi na internetga, na ichki xizmatlarga (Redis, PostgreSQL,",
+        "cloud metadata) chiqa olmaydi. Durabl'ning standart holati.",
+        "`settings.SANDBOX_NETWORK_MODE=none` shunga mos keladi."
+      ],
+      "network_mode": "none",
+      "docker_run_flags": ["--network=none"],
+      "runsc_flags": ["--network=none"],
+      "dns": [],
+      "egress": {
+        "allow": [],
+        "deny": ["0.0.0.0/0", "::/0"]
+      },
+      "iptables_example": [
+        "# Tarmoq namespace'ida interfeys yo'q — iptables qoidalari ham kerak emas.",
+        "# Tekshirish:",
+        "#   docker run --rm --network=none durabl/runner-python:latest \\",
+        "#     python -c \"import socket; socket.create_connection(('1.1.1.1', 443), 2)\"",
+        "#   -> OSError: [Errno 101] Network is unreachable"
+      ]
+    },
+
+    "restricted": {
+      "_izoh": [
+        "Faqat DNS (53) va HTTPS (443) chiqishi mumkin, va faqat ommaviy",
+        "IP'larga: barcha xususiy diapazonlar hamda cloud metadata manzili",
+        "(169.254.169.254) bloklanadi — SSRF himoyasi.",
+        "Docker o'zi port-darajali egress filtrini qo'llab-quvvatlamaydi,",
+        "shuning uchun alohida tarmoq + DOCKER-USER zanjiri ishlatiladi."
+      ],
+      "network_mode": "durabl-sandbox-restricted",
+      "docker_run_flags": [
+        "--network=durabl-sandbox-restricted",
+        "--dns=1.1.1.1",
+        "--dns=8.8.8.8"
+      ],
+      "runsc_flags": ["--network=sandbox"],
+      "docker_network_create": [
+        "docker network create \\",
+        "  --driver=bridge \\",
+        "  --subnet=172.31.240.0/24 \\",
+        "  --opt com.docker.network.bridge.name=durabl0 \\",
+        "  --opt com.docker.network.bridge.enable_icc=false \\",
+        "  durabl-sandbox-restricted"
+      ],
+      "dns": ["1.1.1.1", "8.8.8.8"],
+      "egress": {
+        "allow_ports": [
+          { "port": 53, "protocol": "udp", "_izoh": "DNS so'rovlari" },
+          { "port": 53, "protocol": "tcp", "_izoh": "DNS (katta javoblar uchun TCP)" },
+          { "port": 443, "protocol": "tcp", "_izoh": "HTTPS — API chaqiruvlari" }
+        ],
+        "deny_cidrs": [
+          { "cidr": "169.254.0.0/16", "_izoh": "link-local + cloud metadata (169.254.169.254) — eng muhim blok" },
+          { "cidr": "10.0.0.0/8", "_izoh": "xususiy tarmoq" },
+          { "cidr": "172.16.0.0/12", "_izoh": "xususiy tarmoq (Docker shu yerda)" },
+          { "cidr": "192.168.0.0/16", "_izoh": "xususiy tarmoq" },
+          { "cidr": "127.0.0.0/8", "_izoh": "host loopback" },
+          { "cidr": "100.64.0.0/10", "_izoh": "CGNAT" },
+          { "cidr": "fd00::/8", "_izoh": "IPv6 xususiy" },
+          { "cidr": "fe80::/10", "_izoh": "IPv6 link-local" }
+        ],
+        "default": "deny"
+      },
+      "iptables_example": [
+        "#!/usr/bin/env bash",
+        "# Durabl — 'restricted' profili uchun egress filtr.",
+        "# DOCKER-USER zanjiri Docker'ning o'z qoidalaridan OLDIN ishlaydi,",
+        "# shuning uchun o'zgarishlar Docker restart'idan keyin ham saqlanadi.",
+        "set -euo pipefail",
+        "IFACE=durabl0",
+        "",
+        "# 1) Xususiy diapazonlar va metadata — birinchi navbatda rad etiladi.",
+        "for cidr in 169.254.0.0/16 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 127.0.0.0/8 100.64.0.0/10; do",
+        "  iptables -I DOCKER-USER -i \"$IFACE\" -d \"$cidr\" -j REJECT --reject-with icmp-admin-prohibited",
+        "done",
+        "",
+        "# 2) DNS va HTTPS ga ruxsat.",
+        "iptables -A DOCKER-USER -i \"$IFACE\" -p udp --dport 53 -j RETURN",
+        "iptables -A DOCKER-USER -i \"$IFACE\" -p tcp --dport 53 -j RETURN",
+        "iptables -A DOCKER-USER -i \"$IFACE\" -p tcp --dport 443 -j RETURN",
+        "",
+        "# 3) Qolgan hamma narsa rad etiladi.",
+        "iptables -A DOCKER-USER -i \"$IFACE\" -j REJECT --reject-with icmp-admin-prohibited",
+        "",
+        "# Qoidalarni saqlash (Debian/Ubuntu): netfilter-persistent save"
+      ]
+    },
+
+    "full": {
+      "_izoh": [
+        "To'liq tarmoq. FAQAT ENTERPRISE rejada va faqat alohida kelishuv",
+        "bo'yicha yoqiladi. Bu holatda ham xususiy diapazonlar bloklanadi:",
+        "mijoz kodi Durabl'ning o'z infratuzilmasiga (Redis, PostgreSQL) hech",
+        "qachon yeta olmasligi kerak."
+      ],
+      "network_mode": "durabl-sandbox-full",
+      "docker_run_flags": ["--network=durabl-sandbox-full"],
+      "runsc_flags": ["--network=sandbox"],
+      "docker_network_create": [
+        "docker network create \\",
+        "  --driver=bridge \\",
+        "  --subnet=172.31.241.0/24 \\",
+        "  --opt com.docker.network.bridge.name=durabl1 \\",
+        "  --opt com.docker.network.bridge.enable_icc=false \\",
+        "  durabl-sandbox-full"
+      ],
+      "dns": ["1.1.1.1", "8.8.8.8"],
+      "egress": {
+        "allow_ports": [{ "port": 0, "protocol": "any", "_izoh": "barcha portlar" }],
+        "deny_cidrs": [
+          { "cidr": "169.254.0.0/16", "_izoh": "cloud metadata — HAR DOIM bloklanadi" },
+          { "cidr": "10.0.0.0/8", "_izoh": "ichki infratuzilma" },
+          { "cidr": "172.16.0.0/12", "_izoh": "ichki infratuzilma" },
+          { "cidr": "192.168.0.0/16", "_izoh": "ichki infratuzilma" },
+          { "cidr": "127.0.0.0/8", "_izoh": "host loopback" }
+        ],
+        "default": "allow"
+      },
+      "iptables_example": [
+        "#!/usr/bin/env bash",
+        "# Durabl — 'full' profili: hamma narsaga ruxsat, ichki tarmoq bloklangan.",
+        "set -euo pipefail",
+        "IFACE=durabl1",
+        "for cidr in 169.254.0.0/16 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 127.0.0.0/8; do",
+        "  iptables -I DOCKER-USER -i \"$IFACE\" -d \"$cidr\" -j REJECT --reject-with icmp-admin-prohibited",
+        "done",
+        "# Qolgan egress Docker'ning standart qoidalari bo'yicha o'tadi."
+      ]
+    }
+  },
+
+  "verification": {
+    "_izoh": "Siyosat ishlayotganini tekshirish buyruqlari.",
+    "commands": [
+      "# 'none': tarmoq umuman yo'q (xato kutiladi)",
+      "docker run --rm --runtime=runsc --network=none durabl/runner-node:latest \\",
+      "  node -e \"require('node:dns').lookup('example.com', (e) => { console.log(e ? 'BLOKLANGAN' : 'OCHIQ'); })\"",
+      "",
+      "# 'restricted': metadata manzili bloklanganini tekshirish (timeout kutiladi)",
+      "docker run --rm --network=durabl-sandbox-restricted durabl/runner-python:latest \\",
+      "  python -c \"import socket; socket.create_connection(('169.254.169.254', 80), 3)\"",
+      "",
+      "# 'restricted': HTTPS ishlashini tekshirish",
+      "docker run --rm --network=durabl-sandbox-restricted durabl/runner-python:latest \\",
+      "  python -c \"import socket; socket.create_connection(('1.1.1.1', 443), 5); print('HTTPS OCHIQ')\""
+    ]
+  }
+}

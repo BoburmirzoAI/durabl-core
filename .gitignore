@@ -1,0 +1,193 @@
+# =============================================================================
+# Durabl — git kuzatmaydigan fayllar
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Muhit o'zgaruvchilari (SIRLAR — hech qachon commit qilinmaydi)
+# `*.example` fayllar esa kuzatiladi (namuna sifatida)
+# -----------------------------------------------------------------------------
+.env
+.env.*
+*.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+!.env.example
+!*.env.example
+!.env.local.example
+
+# -----------------------------------------------------------------------------
+# Python
+# -----------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+sdist/
+wheels/
+*.egg-info/
+*.egg
+MANIFEST
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Test va sifat nazorati keshlari
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+.tox/
+.nox/
+.hypothesis/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+*.cover
+nosetests.xml
+
+# Jupyter / IPython
+.ipynb_checkpoints/
+profile_default/
+ipython_config.py
+
+# -----------------------------------------------------------------------------
+# Node / Next.js
+# -----------------------------------------------------------------------------
+node_modules/
+.pnp
+.pnp.js
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.next/
+out/
+.turbo/
+.swc/
+*.tsbuildinfo
+next-env.d.ts
+.vercel
+
+# npm/yarn/pnpm loglari
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.npm/
+.eslintcache
+
+# Test natijalari
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+
+# -----------------------------------------------------------------------------
+# Ma'lumotlar bazasi fayllari (lokal SQLite)
+# -----------------------------------------------------------------------------
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+*.sqlite3-journal
+
+# -----------------------------------------------------------------------------
+# Loglar
+# -----------------------------------------------------------------------------
+*.log
+logs/
+log/
+
+# -----------------------------------------------------------------------------
+# Docker va infratuzilma
+# -----------------------------------------------------------------------------
+docker-compose.override.yml
+.docker/
+# Nginx TLS sertifikatlari va ACME artefaktlari (sir!)
+infra/nginx/certs/
+infra/nginx/ssl/
+infra/certbot/
+*.pem
+*.key
+*.crt
+*.csr
+# Grafana/Prometheus lokal ma'lumotlari (volume ichida bo'lishi kerak)
+infra/grafana/data/
+infra/prometheus/data/
+
+# -----------------------------------------------------------------------------
+# gVisor / sandbox vaqtinchalik fayllari
+# -----------------------------------------------------------------------------
+sandbox/tmp/
+sandbox/**/*.tar
+
+# -----------------------------------------------------------------------------
+# IDE va muharrirlar
+# -----------------------------------------------------------------------------
+.vscode/
+!.vscode/settings.json.example
+.idea/
+*.iml
+*.swp
+*.swo
+*~
+.history/
+
+# -----------------------------------------------------------------------------
+# Operatsion tizim
+# -----------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# -----------------------------------------------------------------------------
+# Vaqtinchalik fayllar
+# -----------------------------------------------------------------------------
+tmp/
+temp/
+*.tmp
+*.bak
+*.orig
+
+# -----------------------------------------------------------------------------
+# Eski frontend arxivi
+# -----------------------------------------------------------------------------
+# `frontend-v1/` — arxitektura hujjati bo'yicha qurilgan birinchi frontend.
+# Yangi `frontend/` dizayn fayllaridan qayta qurilgach zaxira sifatida
+# saqlandi (undan Dockerfile va infratuzilma ko'chirildi). Repoda kerak emas.
+_frontend-v1-archive/
+.durabl-sandbox/
+
+# -----------------------------------------------------------------------------
+# Ichki hujjatlar
+# -----------------------------------------------------------------------------
+# `docs/` va boshqa `.md` fayllar — ishlash jarayonidagi o'z yozuvlarimiz
+# (audit, vazifalar ro'yxati, shartnomalar, progress). Ular ommaviy repoda
+# kerak emas: ba'zilari ichki qaror va kamchiliklarni ochiq yozadi.
+#
+# Qoida: HAMMA `.md` e'tiborsiz, FAQAT ildizdagi `README.md` bundan mustasno.
+# Papka emas, fayl namunasi bo'yicha filtrlanadi — shuning uchun istisno
+# (`!`) ishlaydi.
+*.md
+!/README.md

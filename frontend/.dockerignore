@@ -1,0 +1,55 @@
+# =============================================================================
+# Durabl frontend — image ichiga TUSHMAYDIGAN fayllar
+# =============================================================================
+
+# --- Muhit va sirlar ---
+.env
+.env.*
+!.env.example
+!.env.local.example
+
+# --- Node ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm/
+.pnpm-store/
+
+# --- Next.js build artefaktlari (image o'zi build qiladi) ---
+.next/
+out/
+dist/
+build/
+.turbo/
+*.tsbuildinfo
+next-env.d.ts
+
+# --- Test va coverage ---
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+
+# --- Dizayn ma'lumotnomasi (faqat ishlab chiqish uchun, image'da kerak emas) ---
+design-reference/
+
+# --- IDE va OS ---
+.vscode/
+.idea/
+.DS_Store
+*.swp
+
+# --- Git va CI ---
+.git/
+.gitignore
+.github/
+
+# --- Docker ---
+Dockerfile
+Dockerfile.*
+.dockerignore
+
+# --- Loglar ---
+*.log
+logs/

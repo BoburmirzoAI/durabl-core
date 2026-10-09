@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #0A0A0B; }
+  a { color: #8B5CF6; text-decoration: none; }
+  a:hover { color: #A78BFA; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: #242428; border-radius: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+</style>
+</helmet>
+<div style="display:grid;grid-template-columns:240px minmax(0,1fr);height:100vh;width:100%;background:#0A0A0B;color:#FAFAFA;font-family:Inter,sans-serif;font-size:13px;overflow:hidden;-webkit-font-smoothing:antialiased">
+
+  <aside style="display:flex;flex-direction:column;background:#0A0A0B;border-right:1px solid #242428;min-height:0">
+    <div style="display:flex;align-items:center;gap:9px;padding:16px 16px 14px;border-bottom:1px solid #161619">
+      <div style="width:24px;height:24px;border-radius:6px;background:#8B5CF6;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:#fff;letter-spacing:-.02em">D</div>
+      <span style="font-size:15px;font-weight:600;letter-spacing:-.01em">Durabl</span>
+      <span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:9px;color:#52525B;border:1px solid #242428;border-radius:4px;padding:1px 5px">v2.4</span>
+    </div>
+    <nav style="flex:1;overflow-y:auto;padding:12px 10px;display:flex;flex-direction:column;gap:14px">
+      <sc-for list="{{ navSections }}" as="section" hint-placeholder-count="4">
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <div style="font-size:10px;font-weight:600;letter-spacing:.09em;color:#52525B;padding:4px 10px 4px">{{ section.title }}</div>
+          <sc-for list="{{ section.items }}" as="item" hint-placeholder-count="3">
+            <div style="position:relative;display:flex;align-items:center;gap:9px;padding:6px 10px;border-radius:6px;cursor:pointer;line-height:1;background:{{ item.bg }};color:{{ item.color }}" style-hover="background:#161619;color:#FAFAFA">
+              <span style="position:absolute;left:-10px;top:50%;transform:translateY(-50%);width:2px;height:15px;border-radius:0 2px 2px 0;background:{{ item.dot }}"></span>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="{{ item.iconColor }}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="{{ item.d }}"></path></svg>
+              <span style="flex:1">{{ item.name }}</span>
+              <sc-if value="{{ item.badge }}" hint-placeholder-val=""><span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:500;padding:1px 6px;border-radius:5px;background:rgba(239,68,68,.14);color:#EF4444">{{ item.badge }}</span></sc-if>
+            </div>
+          </sc-for>
+        </div>
+      </sc-for>
+    </nav>
+    <div style="border-top:1px solid #161619;padding:10px;display:flex;align-items:center;gap:9px;cursor:pointer" style-hover="background:#0f0f10">
+      <div style="width:28px;height:28px;border-radius:50%;background:#242428;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#D4D4D8">JD</div>
+      <div style="flex:1;min-width:0;line-height:1.25">
+        <div style="font-size:12px;font-weight:500;color:#FAFAFA">Jordan Diaz</div>
+        <div style="font-size:11px;color:#52525B;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">jordan@durabl.dev</div>
+      </div>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#52525B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"></path></svg>
+    </div>
+  </aside>
+
+  <main style="display:flex;flex-direction:column;min-width:0;min-height:0">
+
+    <header style="height:52px;flex-shrink:0;display:flex;align-items:center;gap:16px;padding:0 20px;border-bottom:1px solid #242428;background:#0A0A0B">
+      <div style="display:flex;align-items:center;gap:7px;font-size:13px">
+        <span style="color:#71717A">Durabl</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3f3f46" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg>
+        <span style="color:#FAFAFA;font-weight:500">Analytics</span>
+      </div>
+      <div style="flex:1;display:flex;justify-content:center">
+        <div style="display:flex;align-items:center;gap:8px;width:100%;max-width:400px;padding:6px 10px;background:#141416;border:1px solid #242428;border-radius:8px;cursor:text" style-hover="border-color:#33333a">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#52525B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4a6 6 0 1 0 0 12 6 6 0 0 0 0-12zM20 20l-4.3-4.3"></path></svg>
+          <span style="flex:1;color:#52525B;font-size:12px">Search jobs, executions, workers…</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#A1A1AA;border:1px solid #242428;border-radius:4px;padding:1px 6px;background:#0f0f10">⌘K</span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <button aria-label="Notifications" style="position:relative;width:32px;height:32px;display:flex;align-items:center;justify-content:center;background:transparent;border:1px solid transparent;border-radius:7px;cursor:pointer" style-hover="background:#161619;border-color:#242428">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A1A1AA" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 1 1 12 0c0 5 2 6 2 6H4s2-1 2-6zM10 20a2 2 0 0 0 4 0"></path></svg>
+          <span style="position:absolute;top:6px;right:7px;width:6px;height:6px;border-radius:50%;background:#EF4444;border:1.5px solid #0A0A0B"></span>
+        </button>
+        <div style="width:1px;height:20px;background:#242428;margin:0 4px"></div>
+        <div style="width:30px;height:30px;border-radius:50%;background:#242428;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#D4D4D8;cursor:pointer">JD</div>
+      </div>
+    </header>
+
+    <div style="flex:1;overflow-y:auto;min-height:0;padding:22px 24px;display:flex;flex-direction:column;gap:16px">
+
+      <div style="flex-shrink:0;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+        <h1 style="margin:0;font-size:20px;font-weight:600;letter-spacing:-.02em">Analytics</h1>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:12px">
+          <div style="display:flex;align-items:center;gap:2px;padding:3px;background:#141416;border:1px solid #242428;border-radius:8px">
+            <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="4">
+              <div onClick="{{ t.on }}" style="padding:5px 11px;border-radius:6px;font-size:12px;font-weight:500;white-space:nowrap;cursor:pointer;background:{{ t.bg }};color:{{ t.color }}">{{ t.label }}</div>
+            </sc-for>
+          </div>
+          <button style="display:flex;align-items:center;gap:7px;padding:7px 13px;background:#141416;border:1px solid #242428;border-radius:8px;color:#D4D4D8;font-size:13px;font-weight:500;font-family:Inter,sans-serif;cursor:pointer" style-hover="border-color:#33333a">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A1A1AA" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M4 19h16"></path></svg>Export report
+          </button>
+        </div>
+      </div>
+
+      <div style="flex-shrink:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px">
+        <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="4">
+          <div style="background:#141416;border:1px solid #242428;border-radius:10px;padding:15px 16px">
+            <div style="font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#71717A">{{ k.label }}</div>
+            <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:10px;margin-top:11px">
+              <div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:600;line-height:1;letter-spacing:-.02em;color:{{ k.valueColor }}">{{ k.value }}</div>
+                <div style="margin-top:8px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;color:{{ k.trendColor }}">{{ k.trend }}</div>
+              </div>
+              <svg viewBox="0 0 120 40" width="96" height="36" preserveAspectRatio="none" style="flex-shrink:0">
+                <defs><linearGradient id="spark{{ k.gid }}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="{{ k.sparkColor }}" stop-opacity="0.3"></stop><stop offset="100%" stop-color="{{ k.sparkColor }}" stop-opacity="0"></stop></linearGradient></defs>
+                <path d="{{ k.sparkArea }}" fill="url(#spark{{ k.gid }})"></path>
+                <path d="{{ k.sparkLine }}" fill="none" stroke="{{ k.sparkColor }}" stroke-width="1.6" vector-effect="non-scaling-stroke" stroke-linejoin="round"></path>
+              </svg>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="flex-shrink:0;background:#141416;border:1px solid #242428;border-radius:12px;padding:18px 18px 12px">
+        <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap">
+          <div>
+            <div style="font-size:15px;font-weight:600;letter-spacing:-.01em">Throughput Over Time</div>
+            <div style="font-size:12px;color:#71717A;margin-top:3px">Completed vs failed · jobs per minute</div>
+          </div>
+          <div style="margin-left:auto;display:flex;align-items:center;gap:16px">
+            <div style="display:flex;align-items:center;gap:7px;font-size:12px;color:#A1A1AA"><span style="width:8px;height:8px;border-radius:2px;background:#22C55E"></span>Completed</div>
+            <div style="display:flex;align-items:center;gap:7px;font-size:12px;color:#A1A1AA"><span style="width:8px;height:8px;border-radius:2px;background:#EF4444"></span>Failed</div>
+          </div>
+        </div>
+        <div style="position:relative;margin-top:14px">
+          <svg ref="{{ mainRef }}" viewBox="0 0 1000 260" preserveAspectRatio="none" width="100%" style="display:block;height:260px;cursor:crosshair" onMouseMove="{{ onMainMove }}" onMouseLeave="{{ onMainLeave }}">
+            <defs>
+              <linearGradient id="agComp" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#22C55E" stop-opacity="0.32"></stop><stop offset="100%" stop-color="#22C55E" stop-opacity="0"></stop></linearGradient>
+              <linearGradient id="agFail" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#EF4444" stop-opacity="0.3"></stop><stop offset="100%" stop-color="#EF4444" stop-opacity="0"></stop></linearGradient>
+            </defs>
+            <sc-for list="{{ mainYTicks }}" as="t" hint-placeholder-count="5">
+              <line x1="{{ t.x1 }}" y1="{{ t.y }}" x2="{{ t.x2 }}" y2="{{ t.y }}" stroke="#1C1C20" stroke-width="1"></line>
+              <text x="40" y="{{ t.y }}" fill="#52525B" font-size="11" font-family="JetBrains Mono, monospace" text-anchor="end" dominant-baseline="middle">{{ t.label }}</text>
+            </sc-for>
+            <path d="{{ mainTopArea }}" fill="url(#agComp)"></path>
+            <path d="{{ mainFailArea }}" fill="url(#agFail)"></path>
+            <path d="{{ mainTopLine }}" fill="none" stroke="#22C55E" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"></path>
+            <path d="{{ mainFailLine }}" fill="none" stroke="#EF4444" stroke-width="1.8" vector-effect="non-scaling-stroke" stroke-linejoin="round"></path>
+            <sc-for list="{{ mainXTicks }}" as="t" hint-placeholder-count="7">
+              <text x="{{ t.x }}" y="254" fill="#52525B" font-size="11" font-family="JetBrains Mono, monospace" text-anchor="middle">{{ t.label }}</text>
+            </sc-for>
+            <sc-if value="{{ mainHover }}" hint-placeholder-val="">
+              <line x1="{{ mainHover.px }}" y1="14" x2="{{ mainHover.px }}" y2="236" stroke="#8B5CF6" stroke-width="1" stroke-dasharray="3 3" vector-effect="non-scaling-stroke"></line>
+              <circle cx="{{ mainHover.px }}" cy="{{ mainHover.topY }}" r="4" fill="#22C55E" stroke="#0A0A0B" stroke-width="2"></circle>
+              <circle cx="{{ mainHover.px }}" cy="{{ mainHover.failY }}" r="3.5" fill="#EF4444" stroke="#0A0A0B" stroke-width="2"></circle>
+            </sc-if>
+          </svg>
+          <sc-if value="{{ mainHover }}" hint-placeholder-val="">
+            <div style="position:absolute;top:2px;left:{{ mainHover.leftPct }}%;transform:translateX(-50%);pointer-events:none;background:#1C1C20;border:1px solid #33333a;border-radius:8px;padding:8px 10px;min-width:128px;box-shadow:0 8px 24px rgba(0,0,0,.5)">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#71717A;margin-bottom:6px">{{ mainHover.time }}</div>
+              <div style="display:flex;align-items:center;gap:7px;font-size:12px;margin-bottom:4px"><span style="width:7px;height:7px;border-radius:2px;background:#22C55E"></span><span style="color:#A1A1AA;flex:1">Completed</span><span style="font-family:'JetBrains Mono',monospace;color:#FAFAFA;font-weight:600">{{ mainHover.comp }}</span></div>
+              <div style="display:flex;align-items:center;gap:7px;font-size:12px"><span style="width:7px;height:7px;border-radius:2px;background:#EF4444"></span><span style="color:#A1A1AA;flex:1">Failed</span><span style="font-family:'JetBrains Mono',monospace;color:#FAFAFA;font-weight:600">{{ mainHover.fail }}</span></div>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+
+      <div style="flex-shrink:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px">
+        <div style="background:#141416;border:1px solid #242428;border-radius:12px;padding:18px">
+          <div style="font-size:14px;font-weight:600;letter-spacing:-.01em">Latency Distribution</div>
+          <div style="font-size:12px;color:#71717A;margin-top:3px">Jobs by completion-time bucket</div>
+          <div style="display:flex;align-items:flex-end;gap:10px;height:170px;margin-top:20px">
+            <sc-for list="{{ histo }}" as="h" hint-placeholder-count="6">
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;height:100%;justify-content:flex-end">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#A1A1AA">{{ h.val }}</span>
+                <div style="width:100%;max-width:40px;border-radius:5px 5px 0 0;height:{{ h.h }};background:{{ h.color }}" title="{{ h.bucket }}: {{ h.count }} jobs"></div>
+                <span style="font-size:10px;color:#52525B;font-family:'JetBrains Mono',monospace;text-align:center">{{ h.bucket }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="background:#141416;border:1px solid #242428;border-radius:12px;padding:18px">
+          <div style="font-size:14px;font-weight:600;letter-spacing:-.01em">Jobs by Runtime</div>
+          <div style="font-size:12px;color:#71717A;margin-top:3px">Share of total executions</div>
+          <div style="display:flex;align-items:center;gap:24px;margin-top:16px;flex-wrap:wrap">
+            <svg width="150" height="150" viewBox="0 0 42 42" style="flex-shrink:0">
+              <circle cx="21" cy="21" r="15.9" fill="none" stroke="#1E1E22" stroke-width="5"></circle>
+              <sc-for list="{{ donut }}" as="d" hint-placeholder-count="2">
+                <circle cx="21" cy="21" r="15.9" fill="none" stroke="{{ d.color }}" stroke-width="5" stroke-dasharray="{{ d.dash }}" stroke-dashoffset="{{ d.offset }}" transform="rotate(-90 21 21)" stroke-linecap="butt"></circle>
+              </sc-for>
+              <text x="21" y="20" text-anchor="middle" fill="#FAFAFA" font-size="7" font-weight="600" font-family="JetBrains Mono, monospace">847K</text>
+              <text x="21" y="26" text-anchor="middle" fill="#52525B" font-size="3.2" font-family="Inter, sans-serif">total jobs</text>
+            </svg>
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <sc-for list="{{ donut }}" as="d" hint-placeholder-count="2">
+                <div style="display:flex;align-items:center;gap:10px">
+                  <span style="width:10px;height:10px;border-radius:3px;background:{{ d.color }}"></span>
+                  <span style="font-size:13px;color:#D4D4D8;width:62px">{{ d.name }}</span>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600;color:#FAFAFA">{{ d.pct }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex-shrink:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px">
+        <div style="background:#141416;border:1px solid #242428;border-radius:12px;padding:18px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div><div style="font-size:14px;font-weight:600;letter-spacing:-.01em">Success Rate Trend</div><div style="font-size:12px;color:#71717A;margin-top:3px">Daily success % vs 99% target</div></div>
+            <div style="margin-left:auto;display:flex;align-items:center;gap:7px;font-size:11px;color:#71717A"><span style="width:14px;height:0;border-top:1.5px dashed #52525B"></span>Target 99%</div>
+          </div>
+          <svg viewBox="0 0 400 170" preserveAspectRatio="none" width="100%" height="170" style="margin-top:14px;display:block">
+            <sc-for list="{{ srYTicks }}" as="t" hint-placeholder-count="4">
+              <line x1="34" y1="{{ t.y }}" x2="396" y2="{{ t.y }}" stroke="#1C1C20" stroke-width="1"></line>
+              <text x="30" y="{{ t.y }}" fill="#52525B" font-size="8" font-family="JetBrains Mono, monospace" text-anchor="end" dominant-baseline="middle">{{ t.label }}</text>
+            </sc-for>
+            <line x1="34" y1="{{ srTargetY }}" x2="396" y2="{{ srTargetY }}" stroke="#52525B" stroke-width="1" stroke-dasharray="4 3" vector-effect="non-scaling-stroke"></line>
+            <path d="{{ srLine }}" fill="none" stroke="#8B5CF6" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"></path>
+            <sc-for list="{{ srDots }}" as="d" hint-placeholder-count="7"><circle cx="{{ d.x }}" cy="{{ d.y }}" r="2.6" fill="#8B5CF6"></circle></sc-for>
+          </svg>
+        </div>
+
+        <div style="background:#141416;border:1px solid #242428;border-radius:12px;padding:18px">
+          <div style="font-size:14px;font-weight:600;letter-spacing:-.01em">DLQ Depth Over Time</div>
+          <div style="font-size:12px;color:#71717A;margin-top:3px">Jobs waiting in dead letter queue</div>
+          <svg viewBox="0 0 400 170" preserveAspectRatio="none" width="100%" height="170" style="margin-top:14px;display:block">
+            <defs><linearGradient id="agDlq" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#EF4444" stop-opacity="0.34"></stop><stop offset="100%" stop-color="#EF4444" stop-opacity="0"></stop></linearGradient></defs>
+            <sc-for list="{{ dlqYTicks }}" as="t" hint-placeholder-count="4">
+              <line x1="30" y1="{{ t.y }}" x2="396" y2="{{ t.y }}" stroke="#1C1C20" stroke-width="1"></line>
+              <text x="26" y="{{ t.y }}" fill="#52525B" font-size="8" font-family="JetBrains Mono, monospace" text-anchor="end" dominant-baseline="middle">{{ t.label }}</text>
+            </sc-for>
+            <path d="{{ dlqArea }}" fill="url(#agDlq)"></path>
+            <path d="{{ dlqLine }}" fill="none" stroke="#EF4444" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"></path>
+          </svg>
+        </div>
+      </div>
+
+      <div style="flex-shrink:0;background:#141416;border:1px solid #242428;border-radius:12px;overflow:hidden">
+        <div style="padding:14px 16px;border-bottom:1px solid #1E1E22"><span style="font-size:14px;font-weight:600;letter-spacing:-.01em">Top Failure Reasons</span></div>
+        <div style="display:grid;grid-template-columns:minmax(110px,1.4fr) 76px 110px 72px 100px;align-items:center;padding:9px 16px;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#52525B;border-bottom:1px solid #1E1E22">
+          <span>Error Type</span><span style="text-align:right">Count</span><span style="text-align:right">% of failures</span><span style="text-align:center">Trend</span><span style="text-align:right">Affected Jobs</span>
+        </div>
+        <sc-for list="{{ errors }}" as="e" hint-placeholder-count="6">
+          <div style="display:grid;grid-template-columns:minmax(110px,1.4fr) 76px 110px 72px 100px;align-items:center;padding:0 16px;height:42px;border-bottom:1px solid #161619" style-hover="background:#18181b">
+            <span style="display:flex;align-items:center;gap:8px"><span style="width:7px;height:7px;border-radius:50%;background:{{ e.color }}"></span><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#E4E4E7">{{ e.type }}</span></span>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#A1A1AA;text-align:right">{{ e.count }}</span>
+            <span style="display:flex;align-items:center;justify-content:flex-end;gap:8px"><span style="width:44px;height:5px;background:#1E1E22;border-radius:3px;overflow:hidden"><span style="display:block;height:100%;width:{{ e.pct }};background:{{ e.color }}"></span></span><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#A1A1AA;width:38px;text-align:right">{{ e.pct }}</span></span>
+            <span style="display:flex;justify-content:center;align-items:center;gap:4px;font-family:'JetBrains Mono',monospace;font-size:12px;color:{{ e.trendColor }}">{{ e.trend }}</span>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#71717A;text-align:right">{{ e.affected }}</span>
+          </div>
+        </sc-for>
+      </div>
+
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;$preview&quot;: { &quot;width&quot;: 1320, &quot;height&quot;: 1200 },
+  &quot;timeRange&quot;: { &quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;24h&quot;, &quot;7d&quot;, &quot;30d&quot;, &quot;custom&quot;], &quot;default&quot;: &quot;7d&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Analytics&quot; }
+}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.mainRef = React.createRef();
+    this.state = { range: props.timeRange || '7d', mainHover: null };
+  }
+
+  rand = (s) => Math.abs(Math.sin(s) * 43758.5453) % 1;
+
+  main = (() => {
+    const n = 40, comp = [], fail = [];
+    for (let i = 0; i < n; i++) {
+      const t = i / (n - 1);
+      const base = 300 + 150 * Math.sin((t * 24 - 9) / 24 * Math.PI * 2);
+      comp.push(Math.max(120, Math.round(base + (this.rand(i * 12.9) - 0.5) * 70)));
+      fail.push(Math.max(1, Math.round(base * 0.012 + this.rand(i * 7.1) * 6)));
+    }
+    return { n, comp, fail, max: Math.max.apply(null, comp) * 1.14 };
+  })();
+
+  spark(seed, up) {
+    const n = 16, pts = [];
+    for (let i = 0; i < n; i++) {
+      const trend = up ? i / n : (1 - i / n);
+      pts.push(0.3 + trend * 0.45 + this.rand(seed + i * 3.3) * 0.22);
+    }
+    const max = Math.max.apply(null, pts), min = Math.min.apply(null, pts);
+    const X = (i) => (i / (n - 1)) * 120;
+    const Y = (v) => 38 - ((v - min) / (max - min + 1e-6)) * 34 - 2;
+    const line = pts.map((v, i) => (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1)).join(' ');
+    const area = line + ' L120 40 L0 40 Z';
+    return { line, area };
+  }
+
+  renderVals() {
+    const range = this.state.range;
+    const tabs = [['24h','Last 24h'],['7d','7d'],['30d','30d'],['custom','Custom']].map(([k,l]) => ({
+      label: l, on: () => this.setState({ range: k }),
+      bg: range === k ? '#26262b' : 'transparent', color: range === k ? '#FAFAFA' : '#A1A1AA'
+    }));
+
+    const mk_s = (seed, up) => this.spark(seed, up);
+    const s1 = mk_s(3, true), s2 = mk_s(11, true), s3 = mk_s(19, false), s4 = mk_s(27, true);
+    const kpis = [
+      { label: 'Total Jobs', value: '847K', valueColor: '#FAFAFA', trend: '↑ 12%', trendColor: '#22C55E', gid: '1', sparkColor: '#8B5CF6', sparkLine: s1.line, sparkArea: s1.area },
+      { label: 'Success Rate', value: '99.2%', valueColor: '#FAFAFA', trend: '↑ 0.3%', trendColor: '#22C55E', gid: '2', sparkColor: '#22C55E', sparkLine: s2.line, sparkArea: s2.area },
+      { label: 'Avg Latency', value: '142ms', valueColor: '#FAFAFA', trend: '↓ 8ms', trendColor: '#22C55E', gid: '3', sparkColor: '#3B82F6', sparkLine: s3.line, sparkArea: s3.area },
+      { label: 'P99 Latency', value: '890ms', valueColor: '#FAFAFA', trend: '↑ 20ms', trendColor: '#EF4444', gid: '4', sparkColor: '#EF4444', sparkLine: s4.line, sparkArea: s4.area }
+    ];
+
+    // main stacked chart
+    const padL = 44, padR = 14, padT = 14, padB = 26, W = 1000, H = 260;
+    const mX = (i) => padL + i * (W - padL - padR) / (this.main.n - 1);
+    const mY = (v) => padT + (1 - v / this.main.max) * (H - padT - padB);
+    const topVals = this.main.comp.map((c, i) => c + this.main.fail[i]);
+    const lineOf = (arr, f) => arr.map((v, i) => (i ? 'L' : 'M') + mX(i).toFixed(1) + ' ' + mY(f(v, i)).toFixed(1)).join(' ');
+    const base = H - padB;
+    const mainTopLine = lineOf(topVals, v => v);
+    const mainTopArea = mainTopLine + ' L' + mX(this.main.n-1).toFixed(1) + ' ' + base + ' L' + mX(0).toFixed(1) + ' ' + base + ' Z';
+    const mainFailLine = lineOf(this.main.fail, v => v);
+    const mainFailArea = mainFailLine + ' L' + mX(this.main.n-1).toFixed(1) + ' ' + base + ' L' + mX(0).toFixed(1) + ' ' + base + ' Z';
+    const mainYTicks = [1,0.75,0.5,0.25,0].map(f => { const v = Math.round(this.main.max*f/50)*50; return { y: mY(v).toFixed(1), x1: padL, x2: W-padR, label: v>=1000?(v/1000).toFixed(1)+'k':String(v) }; });
+    const mainXTicks = []; for (let i=0;i<this.main.n;i+=7) mainXTicks.push({ x: mX(i).toFixed(1), label: String(Math.floor(i*36/60)).padStart(2,'0')+':00' });
+
+    const onMainMove = (e) => {
+      const svg = this.mainRef.current; if (!svg) return;
+      const r = svg.getBoundingClientRect();
+      const x = (e.clientX - r.left) / r.width * W;
+      const step = (W - padL - padR) / (this.main.n - 1);
+      let i = Math.max(0, Math.min(this.main.n-1, Math.round((x - padL)/step)));
+      const px = mX(i);
+      const mins = i * 36;
+      this.setState({ mainHover: {
+        px: px.toFixed(1), leftPct: Math.max(9, Math.min(91, px/W*100)),
+        topY: mY(topVals[i]).toFixed(1), failY: mY(this.main.fail[i]).toFixed(1),
+        comp: this.main.comp[i], fail: this.main.fail[i],
+        time: String(Math.floor(mins/60)).padStart(2,'0')+':'+String(mins%60).padStart(2,'0')
+      } });
+    };
+
+    // histogram
+    const buckets = [['0–50ms',41200],['50–100ms',68400],['100–250ms',52100],['250–500ms',19800],['500ms–1s',6300],['1s+',2100]];
+    const hmax = Math.max.apply(null, buckets.map(b => b[1]));
+    const histo = buckets.map((b, i) => ({
+      bucket: b[0], count: b[1], val: b[1] >= 1000 ? (b[1]/1000).toFixed(0)+'k' : String(b[1]),
+      h: (12 + (b[1]/hmax)*88).toFixed(0) + '%',
+      color: i <= 2 ? '#8B5CF6' : i === 3 ? '#6D4AC8' : '#EAB308'
+    }));
+
+    // donut
+    const parts = [['Python', 61.2, '#3B82F6'],['Node', 38.8, '#22C55E']];
+    let acc = 0;
+    const donut = parts.map(p => {
+      const dash = p[1] + ' ' + (100 - p[1]);
+      const offset = -acc; acc += p[1];
+      return { name: p[0], pct: p[1] + '%', color: p[2], dash, offset };
+    });
+
+    // success rate trend
+    const srVals = [98.9, 99.1, 99.3, 99.0, 99.2, 99.4, 99.2];
+    const srMin = 98.5, srMax = 99.6;
+    const sX = (i) => 34 + i * (396 - 34) / (srVals.length - 1);
+    const sY = (v) => 10 + (1 - (v - srMin)/(srMax - srMin)) * 150;
+    const srLine = srVals.map((v, i) => (i ? 'L' : 'M') + sX(i).toFixed(1) + ' ' + sY(v).toFixed(1)).join(' ');
+    const srDots = srVals.map((v, i) => ({ x: sX(i).toFixed(1), y: sY(v).toFixed(1) }));
+    const srYTicks = [99.6, 99.2, 98.8, 98.5].map(v => ({ y: sY(v).toFixed(1), label: v + '%' }));
+    const srTargetY = sY(99).toFixed(1);
+
+    // dlq depth
+    const dVals = [4, 7, 5, 9, 14, 11, 18, 23];
+    const dMax = 26;
+    const dX = (i) => 30 + i * (396 - 30) / (dVals.length - 1);
+    const dY = (v) => 10 + (1 - v/dMax) * 150;
+    const dlqLine = dVals.map((v, i) => (i ? 'L' : 'M') + dX(i).toFixed(1) + ' ' + dY(v).toFixed(1)).join(' ');
+    const dlqArea = dlqLine + ' L' + dX(dVals.length-1).toFixed(1) + ' 160 L30 160 Z';
+    const dlqYTicks = [26, 18, 9, 0].map(v => ({ y: dY(v).toFixed(1), label: String(v) }));
+
+    // errors table
+    const errs = [
+      ['TimeoutError', 1842, 42, '#EAB308', '↑ 6%', '#EF4444', '1,203'],
+      ['MemoryError', 1021, 23, '#EF4444', '↓ 3%', '#22C55E', '711'],
+      ['CodeError', 788, 18, '#F97316', '↑ 2%', '#EF4444', '540'],
+      ['NetworkError', 512, 12, '#3B82F6', '↓ 8%', '#22C55E', '388'],
+      ['RateLimitError', 143, 3, '#A855F7', '↑ 1%', '#EF4444', '96'],
+      ['UnknownError', 88, 2, '#A1A1AA', '→ 0%', '#71717A', '71']
+    ];
+    const errors = errs.map(e => ({ type: e[0], count: e[1].toLocaleString(), pct: e[2] + '%', color: e[3], trend: e[4], trendColor: e[5], affected: e[6] }));
+
+    const ic = (a) => a ? '#8B5CF6' : '#71717A';
+    const mk = (name, d, o = {}) => ({ name, d, badge: o.badge || '', bg: o.active ? '#18181b' : 'transparent', color: o.active ? '#FAFAFA' : '#A1A1AA', dot: o.active ? '#8B5CF6' : 'transparent', iconColor: ic(o.active) });
+    const navSections = [
+      { title: 'OVERVIEW', items: [ mk('Dashboard','M4 4h7v7H4zM13 4h7v4h-7zM13 11h7v9h-7zM4 14h7v6H4z'), mk('Jobs','M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01'), mk('Executions','M4 12h4l2 6 4-15 2 9h4') ] },
+      { title: 'RELIABILITY', items: [ mk('Dead Letter Queue','M12 3 2 20h20zM12 10v4M12 17h.01', { badge: '23' }), mk('Webhooks','M13 3 4 14h7l-1 7 9-11h-7z') ] },
+      { title: 'INSIGHTS', items: [ mk('Analytics','M4 4v16h16M8 16V11M13 16V7M18 16v-5', { active: true }), mk('Usage','M12 3a9 9 0 1 0 9 9h-9z') ] },
+      { title: 'SETTINGS', items: [ mk('API Keys','M10 14a5 5 0 1 1 5-5l6 6-2 2-2-2-2 2-2-2z'), mk('Billing','M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM3 11h18'), mk('Settings','M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1') ] }
+    ];
+
+    return {
+      navSections, tabs, kpis,
+      mainRef: this.mainRef, onMainMove, onMainLeave: () => this.setState({ mainHover: null }), mainHover: this.state.mainHover,
+      mainTopLine, mainTopArea, mainFailLine, mainFailArea, mainYTicks, mainXTicks,
+      histo, donut,
+      srLine, srDots, srYTicks, srTargetY,
+      dlqLine, dlqArea, dlqYTicks,
+      errors
+    };
+  }
+}
+</script>
+</body>
+</html>

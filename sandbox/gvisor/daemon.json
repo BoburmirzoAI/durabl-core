@@ -1,0 +1,42 @@
+{
+  "default-runtime": "runc",
+  "runtimes": {
+    "runsc": {
+      "path": "/usr/local/bin/runsc",
+      "runtimeArgs": [
+        "--platform=systrap",
+        "--network=none",
+        "--overlay2=root:self",
+        "--file-access=exclusive",
+        "--watchdog-action=panic",
+        "--panic-signal=15"
+      ]
+    },
+    "runsc-debug": {
+      "path": "/usr/local/bin/runsc",
+      "runtimeArgs": [
+        "--platform=systrap",
+        "--network=none",
+        "--debug",
+        "--debug-log=/var/log/runsc/",
+        "--strace",
+        "--log-packets"
+      ]
+    }
+  },
+  "default-ulimits": {
+    "nofile": { "Name": "nofile", "Soft": 1024, "Hard": 4096 },
+    "nproc": { "Name": "nproc", "Soft": 256, "Hard": 512 }
+  },
+  "live-restore": true,
+  "no-new-privileges": true,
+  "userland-proxy": false,
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "10m",
+    "max-file": "3"
+  },
+  "default-address-pools": [
+    { "base": "172.30.0.0/16", "size": 24 }
+  ]
+}

@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #0A0A0B; }
+  a { color: #8B5CF6; text-decoration: none; }
+  a:hover { color: #A78BFA; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: #242428; border-radius: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  @keyframes dfade { from{opacity:0} to{opacity:1} }
+  @keyframes dpop { from{opacity:0;transform:scale(.97)} to{opacity:1;transform:scale(1)} }
+  @keyframes dbar { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+  input.dw-input { width:100%;background:#0A0A0B;border:1px solid #242428;border-radius:8px;padding:9px 11px;color:#FAFAFA;font-family:Inter,sans-serif;font-size:13px;outline:none; }
+  input.dw-input:focus { border-color:#8B5CF6; }
+  input.dw-input::placeholder { color:#52525B; }
+</style>
+</helmet>
+<div style="position:relative;display:grid;grid-template-columns:240px minmax(0,1fr);height:100vh;width:100%;background:#0A0A0B;color:#FAFAFA;font-family:Inter,sans-serif;font-size:13px;overflow:hidden;-webkit-font-smoothing:antialiased">
+
+  <aside style="display:flex;flex-direction:column;background:#0A0A0B;border-right:1px solid #242428;min-height:0">
+    <div style="display:flex;align-items:center;gap:9px;padding:16px 16px 14px;border-bottom:1px solid #161619">
+      <div style="width:24px;height:24px;border-radius:6px;background:#8B5CF6;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:#fff;letter-spacing:-.02em">D</div>
+      <span style="font-size:15px;font-weight:600;letter-spacing:-.01em">Durabl</span>
+      <span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:9px;color:#52525B;border:1px solid #242428;border-radius:4px;padding:1px 5px">v2.4</span>
+    </div>
+    <nav style="flex:1;overflow-y:auto;padding:12px 10px;display:flex;flex-direction:column;gap:14px">
+      <sc-for list="{{ navSections }}" as="section" hint-placeholder-count="4">
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <div style="font-size:10px;font-weight:600;letter-spacing:.09em;color:#52525B;padding:4px 10px 4px">{{ section.title }}</div>
+          <sc-for list="{{ section.items }}" as="item" hint-placeholder-count="3">
+            <div style="position:relative;display:flex;align-items:center;gap:9px;padding:6px 10px;border-radius:6px;cursor:pointer;line-height:1;background:{{ item.bg }};color:{{ item.color }}" style-hover="background:#161619;color:#FAFAFA">
+              <span style="position:absolute;left:-10px;top:50%;transform:translateY(-50%);width:2px;height:15px;border-radius:0 2px 2px 0;background:{{ item.dot }}"></span>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="{{ item.iconColor }}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="{{ item.d }}"></path></svg>
+              <span style="flex:1">{{ item.name }}</span>
+              <sc-if value="{{ item.badge }}" hint-placeholder-val=""><span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:500;padding:1px 6px;border-radius:5px;background:rgba(239,68,68,.14);color:#EF4444">{{ item.badge }}</span></sc-if>
+            </div>
+          </sc-for>
+        </div>
+      </sc-for>
+    </nav>
+    <div style="border-top:1px solid #161619;padding:10px;display:flex;align-items:center;gap:9px;cursor:pointer" style-hover="background:#0f0f10">
+      <div style="width:28px;height:28px;border-radius:50%;background:#242428;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#D4D4D8">JD</div>
+      <div style="flex:1;min-width:0;line-height:1.25">
+        <div style="font-size:12px;font-weight:500;color:#FAFAFA">Jordan Diaz</div>
+        <div style="font-size:11px;color:#52525B;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">jordan@durabl.dev</div>
+      </div>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#52525B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"></path></svg>
+    </div>
+  </aside>
+
+  <main style="display:flex;flex-direction:column;min-width:0;min-height:0">
+    <header style="height:52px;flex-shrink:0;display:flex;align-items:center;gap:16px;padding:0 20px;border-bottom:1px solid #242428;background:#0A0A0B">
+      <div style="display:flex;align-items:center;gap:7px;font-size:13px">
+        <span style="color:#71717A">Durabl</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3f3f46" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg>
+        <span style="color:#FAFAFA;font-weight:500">Webhooks</span>
+      </div>
+      <div style="flex:1;display:flex;justify-content:center">
+        <div style="display:flex;align-items:center;gap:8px;width:100%;max-width:400px;padding:6px 10px;background:#141416;border:1px solid #242428;border-radius:8px;cursor:text" style-hover="border-color:#33333a">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#52525B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4a6 6 0 1 0 0 12 6 6 0 0 0 0-12zM20 20l-4.3-4.3"></path></svg>
+          <span style="flex:1;color:#52525B;font-size:12px">Search jobs, executions, workers…</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#A1A1AA;border:1px solid #242428;border-radius:4px;padding:1px 6px;background:#0f0f10">⌘K</span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <button aria-label="Notifications" style="position:relative;width:32px;height:32px;display:flex;align-items:center;justify-content:center;background:transparent;border:1px solid transparent;border-radius:7px;cursor:pointer" style-hover="background:#161619;border-color:#242428">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A1A1AA" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 1 1 12 0c0 5 2 6 2 6H4s2-1 2-6zM10 20a2 2 0 0 0 4 0"></path></svg>
+          <span style="position:absolute;top:6px;right:7px;width:6px;height:6px;border-radius:50%;background:#EF4444;border:1.5px solid #0A0A0B"></span>
+        </button>
+        <div style="width:1px;height:20px;background:#242428;margin:0 4px"></div>
+        <div style="width:30px;height:30px;border-radius:50%;background:#242428;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#D4D4D8;cursor:pointer">JD</div>
+      </div>
+    </header>
+
+    <div style="flex:1;overflow-y:auto;min-height:0;padding:22px 24px;display:flex;flex-direction:column;gap:16px">
+      <div style="flex-shrink:0;display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap">
+        <div>
+          <h1 style="margin:0;font-size:20px;font-weight:600;letter-spacing:-.02em">Webhooks</h1>
+          <div style="font-size:13px;color:#71717A;margin-top:5px">Get notified when jobs complete, fail, or move to DLQ</div>
+        </div>
+        <button onClick="{{ openAdd }}" style="margin-left:auto;display:flex;align-items:center;gap:7px;padding:7px 13px;background:#8B5CF6;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:500;font-family:Inter,sans-serif;cursor:pointer" style-hover="background:#7C4DF0">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"></path></svg>Add Webhook
+        </button>
+      </div>
+
+      <div style="flex-shrink:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px">
+        <sc-for list="{{ hooks }}" as="w" hint-placeholder-count="3">
+          <div style="background:#141416;border:1px solid #242428;border-radius:12px;padding:16px" style-hover="border-color:#2f2f35">
+            <div style="display:flex;align-items:center;gap:10px">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M13 3 4 14h7l-1 7 9-11h-7z"></path></svg>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:12.5px;color:#E4E4E7;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1" title="{{ w.url }}">{{ w.url }}</span>
+              <span onClick="{{ w.onToggle }}" style="flex-shrink:0;display:flex;align-items:center;gap:6px;cursor:pointer">
+                <span style="width:30px;height:17px;border-radius:9px;background:{{ w.track }};position:relative;transition:background .15s"><span style="position:absolute;top:2px;left:{{ w.knob }};width:13px;height:13px;border-radius:50%;background:#fff;transition:left .15s"></span></span>
+              </span>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:13px">
+              <sc-for list="{{ w.events }}" as="ev" hint-placeholder-count="2">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:11px;padding:2px 8px;border-radius:6px;background:{{ ev.bg }};color:{{ ev.color }}">{{ ev.name }}</span>
+              </sc-for>
+            </div>
+            <div style="display:flex;align-items:center;gap:16px;margin-top:14px;padding-top:13px;border-top:1px solid #1E1E22">
+              <div style="min-width:0">
+                <div style="font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#52525B">Last delivery</div>
+                <div style="display:flex;align-items:center;gap:6px;margin-top:5px"><span style="width:7px;height:7px;border-radius:50%;background:{{ w.lastColor }}"></span><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#A1A1AA">{{ w.last }}</span></div>
+              </div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#52525B">Success rate</div>
+                <div style="display:flex;align-items:center;gap:8px;margin-top:6px"><span style="flex:1;height:5px;background:#1E1E22;border-radius:3px;overflow:hidden"><span style="display:block;height:100%;width:{{ w.rate }};background:{{ w.rateColor }}"></span></span><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:{{ w.rateColor }}">{{ w.rate }}</span></div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:7px;margin-top:14px">
+              <button style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:6px 10px;background:#0A0A0B;border:1px solid #242428;border-radius:7px;color:#D4D4D8;font-size:12px;font-weight:500;font-family:Inter,sans-serif;cursor:pointer" style-hover="border-color:#33333a">Test</button>
+              <button style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:6px 10px;background:#0A0A0B;border:1px solid #242428;border-radius:7px;color:#D4D4D8;font-size:12px;font-weight:500;font-family:Inter,sans-serif;cursor:pointer" style-hover="border-color:#33333a">Edit</button>
+              <button aria-label="Delete webhook" style="display:flex;align-items:center;justify-content:center;width:32px;padding:6px;background:#0A0A0B;border:1px solid #242428;border-radius:7px;color:#71717A;cursor:pointer" style-hover="border-color:rgba(239,68,68,.4);color:#EF4444"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"></path></svg></button>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="flex-shrink:0;background:#141416;border:1px solid #242428;border-radius:12px;overflow:hidden">
+        <div style="padding:14px 16px;border-bottom:1px solid #1E1E22"><span style="font-size:14px;font-weight:600;letter-spacing:-.01em">Recent Deliveries</span></div>
+        <div style="display:grid;grid-template-columns:minmax(120px,1.5fr) 118px 78px 58px 58px 90px 68px;align-items:center;padding:9px 16px;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#52525B;border-bottom:1px solid #1E1E22">
+          <span>Webhook</span><span>Event</span><span>Status</span><span>Code</span><span>Try</span><span>Delivered</span><span></span>
+        </div>
+        <sc-for list="{{ deliveries }}" as="d" hint-placeholder-count="10">
+          <div>
+            <div onClick="{{ d.toggle }}" style="display:grid;grid-template-columns:minmax(120px,1.5fr) 118px 78px 58px 58px 90px 68px;align-items:center;padding:0 16px;height:40px;border-bottom:1px solid #161619;cursor:pointer" style-hover="background:#18181b">
+              <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#A1A1AA;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ d.url }}</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#71717A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ d.event }}</span>
+              <span><span style="display:inline-flex;align-items:center;gap:6px;padding:2px 7px;border-radius:6px;font-size:11px;font-weight:500;background:{{ d.stBg }};color:{{ d.stColor }}"><span style="width:6px;height:6px;border-radius:50%;background:{{ d.stColor }}"></span>{{ d.status }}</span></span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:{{ d.codeColor }}">{{ d.code }}</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#71717A">{{ d.attempt }}</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#52525B">{{ d.at }}</span>
+              <span style="display:flex;justify-content:flex-end">
+                <sc-if value="{{ d.failed }}" hint-placeholder-val="">
+                  <button onClick="{{ d.resend }}" style="padding:3px 9px;background:#0A0A0B;border:1px solid #242428;border-radius:6px;color:#A1A1AA;font-size:11px;font-family:Inter,sans-serif;cursor:pointer" style-hover="border-color:#33333a;color:#FAFAFA">Resend</button>
+                </sc-if>
+              </span>
+            </div>
+            <sc-if value="{{ d.open }}" hint-placeholder-val="">
+              <div style="padding:12px 16px 14px;border-bottom:1px solid #161619;background:#0d0d0e;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;animation:dbar .14s ease-out">
+                <div><div style="font-size:11px;font-weight:600;color:#71717A;margin-bottom:7px">Request</div><pre style="margin:0;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.6;color:#A1A1AA;background:#09090A;border:1px solid #1E1E22;border-radius:8px;padding:11px 12px;overflow-x:auto;white-space:pre">{{ d.req }}</pre></div>
+                <div><div style="font-size:11px;font-weight:600;color:#71717A;margin-bottom:7px">Response</div><pre style="margin:0;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.6;color:{{ d.respColor }};background:#09090A;border:1px solid #1E1E22;border-radius:8px;padding:11px 12px;overflow-x:auto;white-space:pre">{{ d.resp }}</pre></div>
+              </div>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </main>
+
+  <sc-if value="{{ modalOpen }}" hint-placeholder-val="">
+    <div onClick="{{ closeModal }}" style="position:absolute;inset:0;z-index:50;background:rgba(0,0,0,.6);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:24px;animation:dfade .16s ease-out">
+      <div onClick="{{ stop }}" style="width:480px;max-width:100%;max-height:100%;overflow-y:auto;background:#141416;border:1px solid #2a2a30;border-radius:14px;box-shadow:0 24px 64px rgba(0,0,0,.6);animation:dpop .16s ease-out">
+        <div style="display:flex;align-items:center;padding:18px 20px 0">
+          <h2 style="margin:0;font-size:16px;font-weight:600">Add Webhook</h2>
+          <span onClick="{{ closeModal }}" style="margin-left:auto;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:7px;color:#71717A;cursor:pointer" style-hover="background:#1f1f24;color:#FAFAFA"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"></path></svg></span>
+        </div>
+        <div style="padding:16px 20px 20px;display:flex;flex-direction:column;gap:16px">
+          <div>
+            <label style="display:block;font-size:12px;font-weight:500;color:#A1A1AA;margin-bottom:7px">Endpoint URL</label>
+            <input ref="{{ urlRef }}" class="dw-input" placeholder="https://api.yourapp.com/webhooks/durabl" />
+          </div>
+          <div>
+            <label style="display:block;font-size:12px;font-weight:500;color:#A1A1AA;margin-bottom:9px">Events</label>
+            <div style="display:flex;flex-direction:column;gap:7px">
+              <sc-for list="{{ eventChoices }}" as="e" hint-placeholder-count="4">
+                <div onClick="{{ e.on }}" style="display:flex;align-items:center;gap:11px;padding:9px 12px;border:1px solid {{ e.border }};border-radius:9px;cursor:pointer;background:{{ e.bg }}">
+                  <span style="flex-shrink:0;width:16px;height:16px;border-radius:5px;border:1.5px solid {{ e.boxBorder }};background:{{ e.boxBg }};display:flex;align-items:center;justify-content:center"><sc-if value="{{ e.checked }}" hint-placeholder-val=""><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-11"></path></svg></sc-if></span>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:12.5px;color:#E4E4E7">{{ e.name }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div>
+            <label style="display:block;font-size:12px;font-weight:500;color:#A1A1AA;margin-bottom:7px">Signing Secret</label>
+            <div style="display:flex;align-items:center;gap:8px;padding:9px 11px;background:#0A0A0B;border:1px solid #242428;border-radius:8px">
+              <span style="flex:1;font-family:'JetBrains Mono',monospace;font-size:12px;color:#A1A1AA;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">whsec_8f2a91c0d4e7b35a</span>
+              <span onClick="{{ copySecret }}" aria-label="Copy secret" style="flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:6px;color:{{ secretColor }};cursor:pointer" style-hover="background:#242428;color:#A1A1AA">
+                <sc-if value="{{ secretCopied }}" hint-placeholder-val=""><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-11"></path></svg></sc-if>
+                <sc-if value="{{ secretNotCopied }}" hint-placeholder-val="{{ true }}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V5a2 2 0 0 1 2-2h10"></path></svg></sc-if>
+              </span>
+            </div>
+            <div style="font-size:11px;color:#52525B;margin-top:6px">Use this to verify the signature on incoming requests.</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:14px 20px;border-top:1px solid #1E1E22">
+          <button onClick="{{ closeModal }}" style="margin-left:auto;padding:8px 14px;background:#1a1a1d;border:1px solid #242428;border-radius:8px;color:#D4D4D8;font-size:13px;font-weight:500;font-family:Inter,sans-serif;cursor:pointer" style-hover="border-color:#33333a">Cancel</button>
+          <button onClick="{{ closeModal }}" style="padding:8px 16px;background:#8B5CF6;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:500;font-family:Inter,sans-serif;cursor:pointer" style-hover="background:#7C4DF0">Add webhook</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;$preview&quot;: { &quot;width&quot;: 1320, &quot;height&quot;: 940 },
+  &quot;showModal&quot;: { &quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: false, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Webhooks&quot; }
+}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.urlRef = React.createRef();
+    this.state = {
+      modal: props.showModal ? true : false,
+      enabled: { w1: true, w2: true, w3: false },
+      events: { 'job.completed': true, 'job.failed': true, 'job.dlq': false, 'job.retrying': false },
+      secretCopied: false, openDelivery: null
+    };
+  }
+
+  EV = {
+    'job.completed': { c: '#22C55E', b: 'rgba(34,197,94,.1)' },
+    'job.failed':    { c: '#EF4444', b: 'rgba(239,68,68,.1)' },
+    'job.dlq':       { c: '#EAB308', b: 'rgba(234,179,8,.1)' },
+    'job.retrying':  { c: '#3B82F6', b: 'rgba(59,130,246,.1)' }
+  };
+
+  HOOKS = [
+    { id: 'w1', url: 'https://api.acme.com/hooks/durabl', events: ['job.completed','job.failed','job.dlq'], last: '2m ago', lastOk: true, rate: 98 },
+    { id: 'w2', url: 'https://ops.example.io/durabl/events', events: ['job.failed','job.dlq'], last: '18m ago', lastOk: true, rate: 100 },
+    { id: 'w3', url: 'https://hooks.slack.com/services/T0/B0/xy', events: ['job.failed'], last: '3h ago', lastOk: false, rate: 72 }
+  ];
+
+  DELIV = [
+    { url:'api.acme.com/hooks/durabl', event:'job.completed', ok:true, code:'200', attempt:'1/5', at:'2m ago' },
+    { url:'ops.example.io/durabl/events', event:'job.failed', ok:true, code:'202', attempt:'1/5', at:'18m ago' },
+    { url:'hooks.slack.com/services/T0', event:'job.failed', ok:false, code:'500', attempt:'3/5', at:'22m ago' },
+    { url:'api.acme.com/hooks/durabl', event:'job.dlq', ok:true, code:'200', attempt:'1/5', at:'31m ago' },
+    { url:'hooks.slack.com/services/T0', event:'job.failed', ok:false, code:'timeout', attempt:'5/5', at:'44m ago' },
+    { url:'ops.example.io/durabl/events', event:'job.dlq', ok:true, code:'202', attempt:'1/5', at:'1h ago' },
+    { url:'api.acme.com/hooks/durabl', event:'job.completed', ok:true, code:'200', attempt:'1/5', at:'1h ago' },
+    { url:'api.acme.com/hooks/durabl', event:'job.failed', ok:false, code:'429', attempt:'2/5', at:'2h ago' },
+    { url:'ops.example.io/durabl/events', event:'job.failed', ok:true, code:'202', attempt:'1/5', at:'2h ago' },
+    { url:'api.acme.com/hooks/durabl', event:'job.completed', ok:true, code:'200', attempt:'1/5', at:'3h ago' }
+  ];
+
+  openAdd = () => this.setState({ modal: true }, () => setTimeout(() => this.urlRef.current && this.urlRef.current.focus(), 40));
+  closeModal = () => this.setState({ modal: false });
+  copySecret = () => { try { navigator.clipboard && navigator.clipboard.writeText('whsec_8f2a91c0d4e7b35a'); } catch(x){} this.setState({ secretCopied: true }); clearTimeout(this._s); this._s = setTimeout(() => this.setState({ secretCopied: false }), 1300); };
+
+  renderVals() {
+    const hooks = this.HOOKS.map(h => {
+      const on = this.state.enabled[h.id];
+      return {
+        url: h.url, last: h.last, lastColor: h.lastOk ? '#22C55E' : '#EF4444',
+        rate: h.rate + '%', rateColor: h.rate >= 95 ? '#22C55E' : h.rate >= 80 ? '#EAB308' : '#EF4444',
+        track: on ? '#8B5CF6' : '#2a2a30', knob: on ? '15px' : '2px',
+        onToggle: () => this.setState(s => ({ enabled: { ...s.enabled, [h.id]: !s.enabled[h.id] } })),
+        events: h.events.map(e => ({ name: e, color: this.EV[e].c, bg: this.EV[e].b }))
+      };
+    });
+
+    const deliveries = this.DELIV.map((d, i) => ({
+      url: d.url, event: d.event, status: d.ok ? '2xx' : 'Failed',
+      stColor: d.ok ? '#22C55E' : '#EF4444', stBg: d.ok ? 'rgba(34,197,94,.12)' : 'rgba(239,68,68,.12)',
+      code: d.code, codeColor: d.ok ? '#A1A1AA' : '#EF4444', attempt: d.attempt, at: d.at,
+      failed: !d.ok, resend: (e) => { if (e) e.stopPropagation(); },
+      open: this.state.openDelivery === i, toggle: () => this.setState(s => ({ openDelivery: s.openDelivery === i ? null : i })),
+      req: 'POST ' + (d.url.length > 28 ? d.url.slice(0,28)+'…' : d.url) + '\nContent-Type: application/json\nX-Durabl-Signature: sha256=…\n\n{\n  "event": "' + d.event + '",\n  "job_id": "job_a3f8…e21"\n}',
+      resp: d.ok ? 'HTTP/1.1 ' + d.code + '\nContent-Type: application/json\n\n{ "received": true }' : 'HTTP/1.1 ' + d.code + '\n\n{\n  "error": "handler failed"\n}',
+      respColor: d.ok ? '#A5D6A5' : '#FCA5A5'
+    }));
+
+    const eventChoices = Object.keys(this.EV).map(name => {
+      const checked = this.state.events[name];
+      return { name, checked, on: () => this.setState(s => ({ events: { ...s.events, [name]: !s.events[name] } })),
+        border: checked ? '#8B5CF6' : '#242428', bg: checked ? 'rgba(139,92,246,.06)' : 'transparent',
+        boxBorder: checked ? '#8B5CF6' : '#3f3f46', boxBg: checked ? '#8B5CF6' : 'transparent' };
+    });
+
+    const ic = (a) => a ? '#8B5CF6' : '#71717A';
+    const mk = (name, d, o = {}) => ({ name, d, badge: o.badge || '', bg: o.active ? '#18181b' : 'transparent', color: o.active ? '#FAFAFA' : '#A1A1AA', dot: o.active ? '#8B5CF6' : 'transparent', iconColor: ic(o.active) });
+    const navSections = [
+      { title: 'OVERVIEW', items: [ mk('Dashboard','M4 4h7v7H4zM13 4h7v4h-7zM13 11h7v9h-7zM4 14h7v6H4z'), mk('Jobs','M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01'), mk('Executions','M4 12h4l2 6 4-15 2 9h4') ] },
+      { title: 'RELIABILITY', items: [ mk('Dead Letter Queue','M12 3 2 20h20zM12 10v4M12 17h.01', { badge: '23' }), mk('Webhooks','M13 3 4 14h7l-1 7 9-11h-7z', { active: true }) ] },
+      { title: 'INSIGHTS', items: [ mk('Analytics','M4 4v16h16M8 16V11M13 16V7M18 16v-5'), mk('Usage','M12 3a9 9 0 1 0 9 9h-9z') ] },
+      { title: 'SETTINGS', items: [ mk('API Keys','M10 14a5 5 0 1 1 5-5l6 6-2 2-2-2-2 2-2-2z'), mk('Billing','M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM3 11h18'), mk('Settings','M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1') ] }
+    ];
+
+    return {
+      navSections, hooks, deliveries, eventChoices,
+      openAdd: this.openAdd, closeModal: this.closeModal, stop: (e) => e.stopPropagation(),
+      modalOpen: this.state.modal, urlRef: this.urlRef,
+      copySecret: this.copySecret, secretCopied: this.state.secretCopied, secretNotCopied: !this.state.secretCopied,
+      secretColor: this.state.secretCopied ? '#22C55E' : '#52525B'
+    };
+  }
+}
+</script>
+</body>
+</html>

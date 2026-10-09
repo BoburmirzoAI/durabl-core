@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #0A0A0B; }
+  a { color: #8B5CF6; text-decoration: none; }
+  a:hover { color: #A78BFA; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: #242428; border-radius: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  @keyframes dpulse { 0%{box-shadow:0 0 0 0 rgba(34,197,94,.45)} 70%{box-shadow:0 0 0 5px rgba(34,197,94,0)} 100%{box-shadow:0 0 0 0 rgba(34,197,94,0)} }
+</style>
+</helmet>
+<div style="display:grid;grid-template-columns:240px minmax(0,1fr);height:100vh;width:100%;background:#0A0A0B;color:#FAFAFA;font-family:Inter,sans-serif;font-size:13px;overflow:hidden;-webkit-font-smoothing:antialiased">
+
+  <aside style="display:flex;flex-direction:column;background:#0A0A0B;border-right:1px solid #242428;min-height:0">
+    <div style="display:flex;align-items:center;gap:9px;padding:16px 16px 14px;border-bottom:1px solid #161619">
+      <div style="width:24px;height:24px;border-radius:6px;background:#8B5CF6;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:#fff;letter-spacing:-.02em">D</div>
+      <span style="font-size:15px;font-weight:600;letter-spacing:-.01em">Durabl</span>
+      <span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:9px;color:#52525B;border:1px solid #242428;border-radius:4px;padding:1px 5px">v2.4</span>
+    </div>
+
+    <nav style="flex:1;overflow-y:auto;padding:12px 10px;display:flex;flex-direction:column;gap:14px">
+      <sc-for list="{{ navSections }}" as="section" hint-placeholder-count="4">
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <div style="font-size:10px;font-weight:600;letter-spacing:.09em;color:#52525B;padding:4px 10px 4px">{{ section.title }}</div>
+          <sc-for list="{{ section.items }}" as="item" hint-placeholder-count="3">
+            <div style="position:relative;display:flex;align-items:center;gap:9px;padding:6px 10px;border-radius:6px;cursor:pointer;line-height:1;background:{{ item.bg }};color:{{ item.color }}" style-hover="background:#161619;color:#FAFAFA">
+              <span style="position:absolute;left:-10px;top:50%;transform:translateY(-50%);width:2px;height:15px;border-radius:0 2px 2px 0;background:{{ item.dot }}"></span>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="{{ item.iconColor }}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="{{ item.d }}"></path></svg>
+              <span style="flex:1">{{ item.name }}</span>
+              <sc-if value="{{ item.badge }}" hint-placeholder-val=""><span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:500;padding:1px 6px;border-radius:5px;background:rgba(239,68,68,.14);color:#EF4444">{{ item.badge }}</span></sc-if>
+            </div>
+          </sc-for>
+        </div>
+      </sc-for>
+    </nav>
+
+    <div style="border-top:1px solid #161619;padding:10px;display:flex;align-items:center;gap:9px;cursor:pointer" style-hover="background:#0f0f10">
+      <div style="width:28px;height:28px;border-radius:50%;background:#242428;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#D4D4D8">JD</div>
+      <div style="flex:1;min-width:0;line-height:1.25">
+        <div style="font-size:12px;font-weight:500;color:#FAFAFA">Jordan Diaz</div>
+        <div style="font-size:11px;color:#52525B;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">jordan@durabl.dev</div>
+      </div>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#52525B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"></path></svg>
+    </div>
+  </aside>
+
+  <main style="display:flex;flex-direction:column;min-width:0;min-height:0">
+
+    <header style="height:52px;flex-shrink:0;display:flex;align-items:center;gap:16px;padding:0 20px;border-bottom:1px solid #242428;background:#0A0A0B">
+      <div style="display:flex;align-items:center;gap:7px;font-size:13px">
+        <span style="color:#71717A">Durabl</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3f3f46" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg>
+        <span style="color:#FAFAFA;font-weight:500">Dashboard</span>
+      </div>
+
+      <div style="flex:1;display:flex;justify-content:center">
+        <div style="display:flex;align-items:center;gap:8px;width:100%;max-width:400px;padding:6px 10px;background:#141416;border:1px solid #242428;border-radius:8px;cursor:text" style-hover="border-color:#33333a">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#52525B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4a6 6 0 1 0 0 12 6 6 0 0 0 0-12zM20 20l-4.3-4.3"></path></svg>
+          <span style="flex:1;color:#52525B;font-size:12px">Search jobs, executions, workers…</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#A1A1AA;border:1px solid #242428;border-radius:4px;padding:1px 6px;background:#0f0f10">⌘K</span>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:6px">
+        <button style="position:relative;width:32px;height:32px;display:flex;align-items:center;justify-content:center;background:transparent;border:1px solid transparent;border-radius:7px;cursor:pointer" style-hover="background:#161619;border-color:#242428">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A1A1AA" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 1 1 12 0c0 5 2 6 2 6H4s2-1 2-6zM10 20a2 2 0 0 0 4 0"></path></svg>
+          <span style="position:absolute;top:6px;right:7px;width:6px;height:6px;border-radius:50%;background:#EF4444;border:1.5px solid #0A0A0B"></span>
+        </button>
+        <div style="width:1px;height:20px;background:#242428;margin:0 4px"></div>
+        <div style="width:30px;height:30px;border-radius:50%;background:#242428;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#D4D4D8;cursor:pointer">JD</div>
+      </div>
+    </header>
+
+    <div style="flex:1;overflow-y:auto;min-height:0;padding:22px 24px;display:flex;flex-direction:column;gap:20px">
+
+      <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+        <h1 style="margin:0;font-size:20px;font-weight:600;letter-spacing:-.02em">Dashboard</h1>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:12px">
+          <div style="display:flex;align-items:center;gap:2px;padding:3px;background:#141416;border:1px solid #242428;border-radius:8px">
+            <sc-for list="{{ tabs }}" as="tab" hint-placeholder-count="3">
+              <div onClick="{{ tab.on }}" style="padding:5px 11px;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;background:{{ tab.bg }};color:{{ tab.color }}">{{ tab.label }}</div>
+            </sc-for>
+          </div>
+          <button style="display:flex;align-items:center;gap:7px;padding:7px 12px;background:#8B5CF6;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:500;font-family:Inter,sans-serif;cursor:pointer" style-hover="background:#7C4DF0">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"></path></svg>
+            New Job
+            <span style="font-family:'JetBrains Mono',monospace;font-size:11px;background:rgba(255,255,255,.18);border-radius:4px;padding:1px 5px;color:#fff">⌘N</span>
+          </button>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px">
+        <sc-for list="{{ stats }}" as="s" hint-placeholder-count="4">
+          <div style="background:#141416;border:1px solid #242428;border-radius:10px;padding:15px 16px" style-hover="border-color:#2f2f35">
+            <div style="font-size:11px;font-weight:600;letter-spacing:.05em;color:#71717A;text-transform:uppercase">{{ s.label }}</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:600;line-height:1;margin-top:12px;letter-spacing:-.02em;color:{{ s.valueColor }}">{{ s.value }}</div>
+            <div style="margin-top:9px;display:flex;align-items:center;gap:6px;font-size:12px">
+              <span style="font-family:'JetBrains Mono',monospace;font-weight:500;color:{{ s.trendColor }}">{{ s.trend }}</span>
+              <span style="color:#52525B">{{ s.sub }}</span>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="background:#141416;border:1px solid #242428;border-radius:12px;padding:18px 18px 12px">
+        <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap">
+          <div>
+            <div style="font-size:15px;font-weight:600;letter-spacing:-.01em">Throughput</div>
+            <div style="font-size:12px;color:#71717A;margin-top:3px">Jobs processed per minute · last 24h</div>
+          </div>
+          <div style="margin-left:auto;display:flex;align-items:center;gap:16px">
+            <div style="display:flex;align-items:center;gap:7px;font-size:12px;color:#A1A1AA"><span style="width:8px;height:8px;border-radius:2px;background:#22C55E"></span>Completed</div>
+            <div style="display:flex;align-items:center;gap:7px;font-size:12px;color:#A1A1AA"><span style="width:8px;height:8px;border-radius:2px;background:#EF4444"></span>Failed</div>
+          </div>
+        </div>
+
+        <div style="position:relative;margin-top:14px">
+          <svg ref="{{ svgRef }}" viewBox="0 0 1000 280" preserveAspectRatio="none" width="100%" style="display:block;height:280px;cursor:crosshair" onMouseMove="{{ onMove }}" onMouseLeave="{{ onLeave }}">
+            <defs>
+              <linearGradient id="thGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#8B5CF6" stop-opacity="0.42"></stop>
+                <stop offset="55%" stop-color="#8B5CF6" stop-opacity="0.12"></stop>
+                <stop offset="100%" stop-color="#8B5CF6" stop-opacity="0"></stop>
+              </linearGradient>
+            </defs>
+            <sc-for list="{{ yTicks }}" as="t" hint-placeholder-count="5">
+              <line x1="{{ t.x1 }}" y1="{{ t.y }}" x2="{{ t.x2 }}" y2="{{ t.y }}" stroke="#1C1C20" stroke-width="1"></line>
+              <text x="40" y="{{ t.y }}" fill="#52525B" font-size="11" font-family="JetBrains Mono, monospace" text-anchor="end" dominant-baseline="middle">{{ t.label }}</text>
+            </sc-for>
+            <path d="{{ areaPath }}" fill="url(#thGrad)" stroke="none"></path>
+            <path d="{{ lineComp }}" fill="none" stroke="#8B5CF6" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke"></path>
+            <path d="{{ lineFail }}" fill="none" stroke="#EF4444" stroke-width="1.6" stroke-linejoin="round" vector-effect="non-scaling-stroke"></path>
+            <sc-for list="{{ xTicks }}" as="t" hint-placeholder-count="7">
+              <text x="{{ t.x }}" y="274" fill="#52525B" font-size="11" font-family="JetBrains Mono, monospace" text-anchor="middle">{{ t.label }}</text>
+            </sc-for>
+            <sc-if value="{{ hover }}" hint-placeholder-val="">
+              <line x1="{{ hover.px }}" y1="18" x2="{{ hover.px }}" y2="254" stroke="#52525B" stroke-width="1" stroke-dasharray="3 3" vector-effect="non-scaling-stroke"></line>
+              <circle cx="{{ hover.px }}" cy="{{ hover.compY }}" r="4" fill="#8B5CF6" stroke="#0A0A0B" stroke-width="2"></circle>
+              <circle cx="{{ hover.px }}" cy="{{ hover.failY }}" r="3.5" fill="#EF4444" stroke="#0A0A0B" stroke-width="2"></circle>
+            </sc-if>
+          </svg>
+          <sc-if value="{{ hover }}" hint-placeholder-val="">
+            <div style="position:absolute;top:4px;left:{{ hover.leftPct }}%;transform:translateX(-50%);pointer-events:none;background:#1C1C20;border:1px solid #33333a;border-radius:8px;padding:8px 10px;min-width:124px;box-shadow:0 8px 24px rgba(0,0,0,.5)">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#71717A;margin-bottom:6px">{{ hover.time }}</div>
+              <div style="display:flex;align-items:center;gap:7px;font-size:12px;margin-bottom:4px"><span style="width:7px;height:7px;border-radius:2px;background:#8B5CF6"></span><span style="color:#A1A1AA;flex:1">Completed</span><span style="font-family:'JetBrains Mono',monospace;color:#FAFAFA;font-weight:600">{{ hover.comp }}</span></div>
+              <div style="display:flex;align-items:center;gap:7px;font-size:12px"><span style="width:7px;height:7px;border-radius:2px;background:#EF4444"></span><span style="color:#A1A1AA;flex:1">Failed</span><span style="font-family:'JetBrains Mono',monospace;color:#FAFAFA;font-weight:600">{{ hover.fail }}</span></div>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px;align-items:start">
+
+        <div style="background:#141416;border:1px solid #242428;border-radius:12px;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid #1E1E22">
+            <span style="font-size:15px;font-weight:600;letter-spacing:-.01em">Recent Jobs</span>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#52525B;border:1px solid #242428;border-radius:4px;padding:1px 6px">⌘J</span>
+          </div>
+          <div style="display:grid;grid-template-columns:minmax(60px,1.4fr) 74px 92px 58px 64px;padding:8px 16px;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#52525B;border-bottom:1px solid #1E1E22">
+            <span>Job ID</span><span>Runtime</span><span>Status</span><span>Duration</span><span style="text-align:right">Created</span>
+          </div>
+          <sc-for list="{{ jobs }}" as="j" hint-placeholder-count="8">
+            <div style="display:grid;grid-template-columns:minmax(60px,1.4fr) 74px 92px 58px 64px;align-items:center;padding:9px 16px;border-bottom:1px solid #161619;cursor:pointer" style-hover="background:#18181b">
+              <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#D4D4D8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ j.id }}</span>
+              <span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#A1A1AA"><span style="width:6px;height:6px;border-radius:50%;background:{{ j.rtDot }}"></span>{{ j.runtime }}</span>
+              <span><span style="display:inline-flex;align-items:center;gap:6px;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:500;background:{{ j.stBg }};color:{{ j.stColor }}"><span style="width:6px;height:6px;border-radius:50%;background:{{ j.stColor }}"></span>{{ j.status }}</span></span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#A1A1AA">{{ j.duration }}</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#52525B;text-align:right">{{ j.created }}</span>
+            </div>
+          </sc-for>
+          <div style="padding:11px 16px;text-align:center">
+            <a href="#" style="font-size:12px;font-weight:500">View all jobs →</a>
+          </div>
+        </div>
+
+        <div style="background:#141416;border:1px solid #242428;border-radius:12px;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid #1E1E22">
+            <span style="font-size:15px;font-weight:600;letter-spacing:-.01em">Worker Status</span>
+            <span style="margin-left:auto;display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:500;background:rgba(34,197,94,.12);color:#22C55E">
+              <span style="width:6px;height:6px;border-radius:50%;background:#22C55E;animation:dpulse 2s infinite"></span>System healthy
+            </span>
+          </div>
+          <div style="padding:4px 16px 8px">
+            <sc-for list="{{ workers }}" as="w" hint-placeholder-count="5">
+              <div style="padding:12px 0;border-bottom:1px solid #161619">
+                <div style="display:flex;align-items:center;gap:9px">
+                  <span style="width:7px;height:7px;border-radius:50%;flex-shrink:0;background:#22C55E;animation:dpulse 2.4s infinite"></span>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#FAFAFA;font-weight:500">{{ w.id }}</span>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#52525B">{{ w.region }}</span>
+                  <span style="margin-left:auto;font-size:11px;color:#71717A"><span style="font-family:'JetBrains Mono',monospace;color:#A1A1AA;font-weight:500">{{ w.jobs }}</span> jobs</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:9px;margin-top:9px">
+                  <span style="font-size:10px;font-weight:600;letter-spacing:.05em;color:#52525B;width:28px">CPU</span>
+                  <div style="flex:1;height:5px;background:#1E1E22;border-radius:3px;overflow:hidden">
+                    <div style="height:100%;border-radius:3px;width:{{ w.cpuPct }};background:{{ w.cpuColor }}"></div>
+                  </div>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:11px;width:34px;text-align:right;color:{{ w.cpuColor }}">{{ w.cpu }}</span>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;$preview&quot;: { &quot;width&quot;: 1320, &quot;height&quot;: 860 },
+  &quot;timeRange&quot;: { &quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;24h&quot;, &quot;7d&quot;, &quot;30d&quot;], &quot;default&quot;: &quot;24h&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Dashboard&quot; },
+  &quot;recentJobsCount&quot;: { &quot;editor&quot;: &quot;int&quot;, &quot;default&quot;: 8, &quot;min&quot;: 4, &quot;max&quot;: 8, &quot;tsType&quot;: &quot;number&quot;, &quot;section&quot;: &quot;Dashboard&quot; },
+  &quot;chartGrid&quot;: { &quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Chart&quot; }
+}">
+class Component extends DCLogic {
+  VBW = 1000; VBH = 280; padL = 44; padR = 14; padT = 18; padB = 26;
+
+  constructor(props) {
+    super(props);
+    this.svgRef = React.createRef();
+    this.state = { range: props.timeRange || '24h', hover: null };
+  }
+
+  data = (() => {
+    const n = 48, comp = [], fail = [];
+    const h = (s) => Math.abs(Math.sin(s) * 43758.5453) % 1;
+    for (let i = 0; i < n; i++) {
+      const t = i / (n - 1);
+      const daily = 255 + 140 * Math.sin((t * 24 - 9) / 24 * Math.PI * 2);
+      const c = Math.max(95, Math.round(daily + (h(i * 12.9898 + 4) - 0.5) * 72));
+      const f = Math.max(1, Math.round(c * 0.011 + h(i * 78.233 + 1.3) * 7));
+      comp.push(c); fail.push(f);
+    }
+    const max = Math.max.apply(null, comp) * 1.12;
+    return { n, comp, fail, max };
+  })();
+
+  mapX(i) { return this.padL + i * (this.VBW - this.padL - this.padR) / (this.data.n - 1); }
+  mapY(v) { return this.padT + (1 - v / this.data.max) * (this.VBH - this.padT - this.padB); }
+  line(a) { return a.map((v, i) => (i ? 'L' : 'M') + this.mapX(i).toFixed(1) + ' ' + this.mapY(v).toFixed(1)).join(' '); }
+  area(a) {
+    const base = this.VBH - this.padB;
+    return this.line(a) + ' L ' + this.mapX(a.length - 1).toFixed(1) + ' ' + base + ' L ' + this.mapX(0).toFixed(1) + ' ' + base + ' Z';
+  }
+
+  onMove = (e) => {
+    const svg = this.svgRef.current; if (!svg) return;
+    const r = svg.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width * this.VBW;
+    const step = (this.VBW - this.padL - this.padR) / (this.data.n - 1);
+    let i = Math.round((x - this.padL) / step);
+    i = Math.max(0, Math.min(this.data.n - 1, i));
+    const mins = i * 30;
+    const hh = String(Math.floor(mins / 60)).padStart(2, '0');
+    const mm = String(mins % 60).padStart(2, '0');
+    const px = this.mapX(i);
+    this.setState({ hover: {
+      i, px: px.toFixed(1), leftPct: Math.max(9, Math.min(91, px / this.VBW * 100)),
+      compY: this.mapY(this.data.comp[i]).toFixed(1), failY: this.mapY(this.data.fail[i]).toFixed(1),
+      comp: this.data.comp[i], fail: this.data.fail[i], time: hh + ':' + mm
+    } });
+  };
+  onLeave = () => this.setState({ hover: null });
+  setRange = (r) => this.setState({ range: r });
+
+  jobsRaw = [
+    { id: 'job_7f3a9c2e41', runtime: 'Python', status: 'success', duration: '1.24s', created: '2m ago' },
+    { id: 'job_a81b4f0937', runtime: 'Node', status: 'running', duration: '0.41s', created: '3m ago' },
+    { id: 'job_2c9e7d1588', runtime: 'Python', status: 'failed', duration: '5.10s', created: '5m ago' },
+    { id: 'job_e04f8a73b2', runtime: 'Node', status: 'success', duration: '0.83s', created: '8m ago' },
+    { id: 'job_5b1d6c92fa', runtime: 'Python', status: 'queued', duration: '—', created: '9m ago' },
+    { id: 'job_9a7e3f41c0', runtime: 'Node', status: 'pending', duration: '—', created: '12m ago' },
+    { id: 'job_c3f82b0675', runtime: 'Python', status: 'success', duration: '2.37s', created: '15m ago' },
+    { id: 'job_6d91a4e8d3', runtime: 'Node', status: 'success', duration: '0.59s', created: '18m ago' }
+  ];
+
+  workersRaw = [
+    { id: 'wkr-01', region: 'us-east-1a', jobs: 4, cpu: 62 },
+    { id: 'wkr-02', region: 'us-east-1b', jobs: 2, cpu: 38 },
+    { id: 'wkr-03', region: 'us-west-2a', jobs: 5, cpu: 84 },
+    { id: 'wkr-04', region: 'eu-west-1a', jobs: 1, cpu: 23 },
+    { id: 'wkr-05', region: 'us-east-1c', jobs: 3, cpu: 71 }
+  ];
+
+  renderVals() {
+    const range = this.state.range;
+    const grid = this.props.chartGrid ?? true;
+    const count = this.props.recentJobsCount ?? 8;
+
+    const ST = {
+      success: { c: '#22C55E', b: 'rgba(34,197,94,.12)' },
+      running: { c: '#3B82F6', b: 'rgba(59,130,246,.12)' },
+      failed:  { c: '#EF4444', b: 'rgba(239,68,68,.12)' },
+      pending: { c: '#EAB308', b: 'rgba(234,179,8,.12)' },
+      queued:  { c: '#A1A1AA', b: 'rgba(161,161,170,.12)' }
+    };
+
+    const tabs = [['24h', '24h'], ['7d', '7d'], ['30d', '30d']].map(([k, l]) => ({
+      key: k, label: l, on: () => this.setRange(k),
+      bg: range === k ? '#26262b' : 'transparent',
+      color: range === k ? '#FAFAFA' : '#A1A1AA'
+    }));
+
+    const stats = [
+      { label: 'Jobs Today', value: '12,847', valueColor: '#FAFAFA', trend: '↑ 8.2%', trendColor: '#22C55E', sub: 'vs yesterday' },
+      { label: 'Success Rate', value: '99.2%', valueColor: '#FAFAFA', trend: '↑ 0.3%', trendColor: '#22C55E', sub: 'last 24h' },
+      { label: 'Avg Latency', value: '142ms', valueColor: '#FAFAFA', trend: '↓ 12ms', trendColor: '#22C55E', sub: 'p50 · last 24h' },
+      { label: 'DLQ Depth', value: '23', valueColor: '#EF4444', trend: '↑ 5', trendColor: '#EF4444', sub: 'needs attention' }
+    ];
+
+    const jobs = this.jobsRaw.slice(0, count).map(j => {
+      const s = ST[j.status];
+      return {
+        id: j.id, runtime: j.runtime, duration: j.duration, created: j.created,
+        status: j.status.charAt(0).toUpperCase() + j.status.slice(1),
+        stColor: s.c, stBg: s.b,
+        rtDot: j.runtime === 'Python' ? '#3B82F6' : '#22C55E'
+      };
+    });
+
+    const workers = this.workersRaw.map(w => {
+      const col = w.cpu < 60 ? '#22C55E' : w.cpu < 82 ? '#EAB308' : '#EF4444';
+      return { id: w.id, region: w.region, jobs: w.jobs, cpu: w.cpu + '%', cpuPct: w.cpu + '%', cpuColor: col };
+    });
+
+    const yTicks = grid ? [1, 0.75, 0.5, 0.25, 0].map(f => {
+      const v = Math.round(this.data.max * f / 10) * 10;
+      return { y: this.mapY(v).toFixed(1), x1: this.padL, x2: this.VBW - this.padR, label: v >= 1000 ? (v / 1000).toFixed(1) + 'k' : String(v) };
+    }) : [];
+
+    const xTicks = [];
+    for (let i = 0; i < this.data.n; i += 8) {
+      xTicks.push({ x: this.mapX(i).toFixed(1), label: String(Math.floor(i * 30 / 60)).padStart(2, '0') + ':00' });
+    }
+    xTicks.push({ x: this.mapX(this.data.n - 1).toFixed(1), label: '24:00' });
+
+    const ic = (active) => active ? '#8B5CF6' : '#71717A';
+    const mk = (name, d, o = {}) => ({
+      name, d, badge: o.badge || '',
+      bg: o.active ? '#18181b' : 'transparent',
+      color: o.active ? '#FAFAFA' : '#A1A1AA',
+      dot: o.active ? '#8B5CF6' : 'transparent',
+      iconColor: ic(o.active)
+    });
+
+    const navSections = [
+      { title: 'OVERVIEW', items: [
+        mk('Dashboard', 'M4 4h7v7H4zM13 4h7v4h-7zM13 11h7v9h-7zM4 14h7v6H4z', { active: true }),
+        mk('Jobs', 'M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01'),
+        mk('Executions', 'M4 12h4l2 6 4-15 2 9h4')
+      ] },
+      { title: 'RELIABILITY', items: [
+        mk('Dead Letter Queue', 'M12 3 2 20h20zM12 10v4M12 17h.01', { badge: '23' }),
+        mk('Webhooks', 'M13 3 4 14h7l-1 7 9-11h-7z')
+      ] },
+      { title: 'INSIGHTS', items: [
+        mk('Analytics', 'M4 4v16h16M8 16V11M13 16V7M18 16v-5'),
+        mk('Usage', 'M12 3a9 9 0 1 0 9 9h-9z')
+      ] },
+      { title: 'SETTINGS', items: [
+        mk('API Keys', 'M10 14a5 5 0 1 1 5-5l6 6-2 2-2-2-2 2-2-2z'),
+        mk('Billing', 'M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM3 11h18'),
+        mk('Settings', 'M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1')
+      ] }
+    ];
+
+    return {
+      svgRef: this.svgRef, onMove: this.onMove, onLeave: this.onLeave,
+      hover: this.state.hover,
+      areaPath: this.area(this.data.comp), lineComp: this.line(this.data.comp), lineFail: this.line(this.data.fail),
+      yTicks, xTicks, tabs, stats, jobs, workers, navSections
+    };
+  }
+}
+</script>
+</body>
+</html>

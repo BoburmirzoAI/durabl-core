@@ -1,0 +1,80 @@
+[project]
+name = "durabl-backend"
+version = "1.0.0"
+description = "Durabl — ishonchli background job va kod bajarish platformasi (backend)"
+requires-python = ">=3.12"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["app", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E", "F", "W",      # pycodestyle + pyflakes
+    "I",                 # isort
+    "N",                 # pep8-naming
+    "UP",                # pyupgrade
+    "B",                 # flake8-bugbear
+    "C4",                # comprehensions
+    "ASYNC",             # async xatolari
+    "RUF",               # ruff'ning o'z qoidalari
+]
+ignore = [
+    "E501",   # qator uzunligi — formatter hal qiladi
+    "B008",   # FastAPI'da `Depends()` standart qiymat sifatida normal
+    "N818",   # xato klassi nomi `Error` bilan tugamasligi mumkin
+    "RUF001", # kirillcha/lotincha o'xshash belgilar (o'zbekcha izohlar uchun)
+    "RUF002",
+    "RUF003",
+    # PEP 695 generiklari (`class X[T]`) ataylab ishlatilmaydi: Pydantic v2 va
+    # SQLAlchemy 2.x `Generic[T]` + `TypeVar` uslubi bilan ishonchli ishlaydi,
+    # yangi sintaksis ba'zi joylarda tur xulosasini buzadi.
+    "UP046",
+    "UP047",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B008", "N802", "N803"]
+"alembic/versions/*" = ["E402", "F401", "I001"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q --strict-markers --tb=short"
+markers = [
+    "unit: tez, izolyatsiyalangan testlar",
+    "integration: DB/Redis bilan ishlaydigan testlar",
+    "e2e: to'liq zanjir testlari",
+    "slow: sekin testlar",
+    "docker: haqiqiy Docker talab qiladi",
+]
+filterwarnings = [
+    "error::DeprecationWarning:app.*",
+    "ignore::DeprecationWarning",
+]
+
+[tool.coverage.run]
+source = ["app"]
+omit = ["app/main.py", "*/alembic/*", "*/tests/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "@abstractmethod",
+]
+
+[tool.mypy]
+python_version = "3.12"
+plugins = ["pydantic.mypy"]
+warn_unused_configs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true

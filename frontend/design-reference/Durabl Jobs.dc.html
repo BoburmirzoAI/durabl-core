@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #0A0A0B; }
+  a { color: #8B5CF6; text-decoration: none; }
+  a:hover { color: #A78BFA; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: #242428; border-radius: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  @keyframes dpulse { 0%{box-shadow:0 0 0 0 rgba(59,130,246,.5)} 70%{box-shadow:0 0 0 5px rgba(59,130,246,0)} 100%{box-shadow:0 0 0 0 rgba(59,130,246,0)} }
+  @keyframes dbar { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+  input.djobs-search { background:transparent;border:none;outline:none;color:#FAFAFA;font-family:Inter,sans-serif;font-size:12px;flex:1;min-width:0; }
+  input.djobs-search::placeholder { color:#52525B; }
+</style>
+</helmet>
+<div ref="{{ rootRef }}" tabindex="0" style="display:grid;grid-template-columns:240px minmax(0,1fr);height:100vh;width:100%;background:#0A0A0B;color:#FAFAFA;font-family:Inter,sans-serif;font-size:13px;overflow:hidden;-webkit-font-smoothing:antialiased;outline:none" onKeyDown="{{ onKey }}">
+
+  <aside style="display:flex;flex-direction:column;background:#0A0A0B;border-right:1px solid #242428;min-height:0">
+    <div style="display:flex;align-items:center;gap:9px;padding:16px 16px 14px;border-bottom:1px solid #161619">
+      <div style="width:24px;height:24px;border-radius:6px;background:#8B5CF6;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:#fff;letter-spacing:-.02em">D</div>
+      <span style="font-size:15px;font-weight:600;letter-spacing:-.01em">Durabl</span>
+      <span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:9px;color:#52525B;border:1px solid #242428;border-radius:4px;padding:1px 5px">v2.4</span>
+    </div>
+    <nav style="flex:1;overflow-y:auto;padding:12px 10px;display:flex;flex-direction:column;gap:14px">
+      <sc-for list="{{ navSections }}" as="section" hint-placeholder-count="4">
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <div style="font-size:10px;font-weight:600;letter-spacing:.09em;color:#52525B;padding:4px 10px 4px">{{ section.title }}</div>
+          <sc-for list="{{ section.items }}" as="item" hint-placeholder-count="3">
+            <div style="position:relative;display:flex;align-items:center;gap:9px;padding:6px 10px;border-radius:6px;cursor:pointer;line-height:1;background:{{ item.bg }};color:{{ item.color }}" style-hover="background:#161619;color:#FAFAFA">
+              <span style="position:absolute;left:-10px;top:50%;transform:translateY(-50%);width:2px;height:15px;border-radius:0 2px 2px 0;background:{{ item.dot }}"></span>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="{{ item.iconColor }}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="{{ item.d }}"></path></svg>
+              <span style="flex:1">{{ item.name }}</span>
+              <sc-if value="{{ item.badge }}" hint-placeholder-val=""><span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:500;padding:1px 6px;border-radius:5px;background:rgba(239,68,68,.14);color:#EF4444">{{ item.badge }}</span></sc-if>
+            </div>
+          </sc-for>
+        </div>
+      </sc-for>
+    </nav>
+    <div style="border-top:1px solid #161619;padding:10px;display:flex;align-items:center;gap:9px;cursor:pointer" style-hover="background:#0f0f10">
+      <div style="width:28px;height:28px;border-radius:50%;background:#242428;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#D4D4D8">JD</div>
+      <div style="flex:1;min-width:0;line-height:1.25">
+        <div style="font-size:12px;font-weight:500;color:#FAFAFA">Jordan Diaz</div>
+        <div style="font-size:11px;color:#52525B;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">jordan@durabl.dev</div>
+      </div>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#52525B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"></path></svg>
+    </div>
+  </aside>
+
+  <main style="display:flex;flex-direction:column;min-width:0;min-height:0">
+
+    <header style="height:52px;flex-shrink:0;display:flex;align-items:center;gap:16px;padding:0 20px;border-bottom:1px solid #242428;background:#0A0A0B">
+      <div style="display:flex;align-items:center;gap:7px;font-size:13px">
+        <span style="color:#71717A">Durabl</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3f3f46" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg>
+        <span style="color:#FAFAFA;font-weight:500">Jobs</span>
+      </div>
+      <div style="flex:1;display:flex;justify-content:center">
+        <div style="display:flex;align-items:center;gap:8px;width:100%;max-width:400px;padding:6px 10px;background:#141416;border:1px solid #242428;border-radius:8px;cursor:text" style-hover="border-color:#33333a">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#52525B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4a6 6 0 1 0 0 12 6 6 0 0 0 0-12zM20 20l-4.3-4.3"></path></svg>
+          <span style="flex:1;color:#52525B;font-size:12px">Search jobs, executions, workers…</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#A1A1AA;border:1px solid #242428;border-radius:4px;padding:1px 6px;background:#0f0f10">⌘K</span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <button style="position:relative;width:32px;height:32px;display:flex;align-items:center;justify-content:center;background:transparent;border:1px solid transparent;border-radius:7px;cursor:pointer" style-hover="background:#161619;border-color:#242428">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A1A1AA" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 1 1 12 0c0 5 2 6 2 6H4s2-1 2-6zM10 20a2 2 0 0 0 4 0"></path></svg>
+          <span style="position:absolute;top:6px;right:7px;width:6px;height:6px;border-radius:50%;background:#EF4444;border:1.5px solid #0A0A0B"></span>
+        </button>
+        <div style="width:1px;height:20px;background:#242428;margin:0 4px"></div>
+        <div style="width:30px;height:30px;border-radius:50%;background:#242428;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#D4D4D8;cursor:pointer">JD</div>
+      </div>
+    </header>
+
+    <div style="flex:1;overflow-y:auto;min-height:0;padding:22px 24px;display:flex;flex-direction:column;gap:16px">
+
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <h1 style="margin:0;font-size:20px;font-weight:600;letter-spacing:-.02em">Jobs</h1>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;color:#A1A1AA;background:#161619;border:1px solid #242428;border-radius:7px;padding:3px 9px">12,847</span>
+        <button style="margin-left:auto;display:flex;align-items:center;gap:7px;padding:7px 12px;background:#8B5CF6;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:500;font-family:Inter,sans-serif;cursor:pointer" style-hover="background:#7C4DF0">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"></path></svg>
+          New Job
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;background:rgba(255,255,255,.18);border-radius:4px;padding:1px 5px;color:#fff">⌘N</span>
+        </button>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:8px;width:272px;padding:6px 10px;background:#141416;border:1px solid #242428;border-radius:8px" style-hover="border-color:#33333a">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#52525B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4a6 6 0 1 0 0 12 6 6 0 0 0 0-12zM20 20l-4.3-4.3"></path></svg>
+          <input ref="{{ searchRef }}" class="djobs-search" placeholder="Search by job ID, key…" value="{{ query }}" onChange="{{ onQuery }}" />
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#52525B;border:1px solid #242428;border-radius:4px;padding:1px 5px;background:#0f0f10">⌘F</span>
+        </div>
+
+        <sc-for list="{{ dropdowns }}" as="d" hint-placeholder-count="3">
+          <button onClick="{{ d.toggle }}" style="display:flex;align-items:center;gap:8px;white-space:nowrap;padding:7px 11px;background:#141416;border:1px solid {{ d.border }};border-radius:8px;color:{{ d.color }};font-size:12px;font-weight:500;font-family:Inter,sans-serif;cursor:pointer;position:relative" style-hover="border-color:#33333a">
+            <span style="color:#52525B;font-weight:400">{{ d.prefix }}</span>{{ d.label }}
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#52525B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>
+            <sc-if value="{{ d.open }}" hint-placeholder-val="">
+              <div style="position:absolute;top:calc(100% + 6px);left:0;z-index:20;min-width:170px;background:#161619;border:1px solid #2a2a30;border-radius:9px;padding:5px;box-shadow:0 12px 32px rgba(0,0,0,.6);animation:dbar .12s ease-out">
+                <sc-for list="{{ d.options }}" as="o" hint-placeholder-count="4">
+                  <div onClick="{{ o.pick }}" style="display:flex;align-items:center;gap:8px;padding:6px 9px;border-radius:6px;font-size:12px;color:{{ o.color }};cursor:pointer" style-hover="background:#1f1f24">
+                    <sc-if value="{{ o.dot }}" hint-placeholder-val=""><span style="width:7px;height:7px;border-radius:50%;background:{{ o.dot }}"></span></sc-if>
+                    <span style="flex:1">{{ o.name }}</span>
+                    <sc-if value="{{ o.active }}" hint-placeholder-val=""><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-11"></path></svg></sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+          </button>
+        </sc-for>
+
+        <sc-if value="{{ hasFilters }}" hint-placeholder-val="">
+          <span onClick="{{ clearFilters }}" style="font-size:12px;color:#71717A;cursor:pointer;font-weight:500" style-hover="color:#A1A1AA">Clear filters</span>
+        </sc-if>
+      </div>
+
+      <sc-if value="{{ hasChips }}" hint-placeholder-val="">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <sc-for list="{{ chips }}" as="c" hint-placeholder-count="2">
+            <span style="display:inline-flex;align-items:center;gap:7px;padding:4px 7px 4px 10px;background:#18181b;border:1px solid #2a2a30;border-radius:7px;font-size:12px;color:#D4D4D8">
+              <span style="color:#52525B">{{ c.kind }}</span>{{ c.label }}
+              <span onClick="{{ c.remove }}" style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:4px;cursor:pointer;color:#71717A" style-hover="background:#2a2a30;color:#FAFAFA">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"></path></svg>
+              </span>
+            </span>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <div style="background:#141416;border:1px solid #242428;border-radius:12px;overflow:hidden;position:relative">
+
+        <sc-if value="{{ selCount }}" hint-placeholder-val="">
+          <div style="position:absolute;top:0;left:0;right:0;z-index:15;display:flex;align-items:center;gap:12px;height:42px;padding:0 16px;background:#17141f;border-bottom:1px solid #2e2640;animation:dbar .14s ease-out">
+            <span style="font-size:12px;color:#C4B5FD;font-weight:500"><span style="font-family:'JetBrains Mono',monospace;color:#A78BFA;font-weight:600">{{ selCount }}</span> selected</span>
+            <div style="width:1px;height:18px;background:#2e2640"></div>
+            <sc-for list="{{ bulkActions }}" as="b" hint-placeholder-count="3">
+              <button onClick="{{ b.on }}" style="display:flex;align-items:center;gap:6px;padding:5px 10px;background:#1c1826;border:1px solid #2e2640;border-radius:7px;color:#D4D4D8;font-size:12px;font-weight:500;font-family:Inter,sans-serif;cursor:pointer" style-hover="background:#231d33;border-color:#3a2f52">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="{{ b.color }}" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{ b.d }}"></path></svg>{{ b.name }}
+              </button>
+            </sc-for>
+            <span onClick="{{ clearSel }}" style="margin-left:auto;font-size:12px;color:#71717A;cursor:pointer" style-hover="color:#FAFAFA">Clear selection</span>
+          </div>
+        </sc-if>
+
+        <div style="display:grid;grid-template-columns:36px minmax(96px,1.3fr) minmax(70px,1fr) 78px 104px 58px 78px 86px 44px;align-items:center;padding:9px 14px;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#52525B;border-bottom:1px solid #1E1E22">
+          <span onClick="{{ toggleAll }}" style="cursor:pointer;display:flex;align-items:center">
+            <span style="width:15px;height:15px;border-radius:4px;border:1.5px solid {{ allBox.border }};background:{{ allBox.bg }};display:flex;align-items:center;justify-content:center">
+              <sc-if value="{{ allBox.check }}" hint-placeholder-val=""><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="{{ allBox.check }}"></path></svg></sc-if>
+            </span>
+          </span>
+          <span>Job ID</span><span>Idempotency Key</span><span>Runtime</span><span>Status</span><span>Attempts</span><span>Duration</span><span>Created</span><span></span>
+        </div>
+
+        <sc-for list="{{ rows }}" as="r" hint-placeholder-count="15">
+          <div onClick="{{ r.onRow }}" style="display:grid;grid-template-columns:36px minmax(96px,1.3fr) minmax(70px,1fr) 78px 104px 58px 78px 86px 44px;align-items:center;padding:0 14px;height:40px;border-bottom:1px solid #161619;cursor:pointer;background:{{ r.rowBg }};box-shadow:{{ r.focus }}" style-hover="background:#18181b">
+            <span onClick="{{ r.onCheck }}" style="cursor:pointer;display:flex;align-items:center">
+              <span style="width:15px;height:15px;border-radius:4px;border:1.5px solid {{ r.cbBorder }};background:{{ r.cbBg }};display:flex;align-items:center;justify-content:center">
+                <sc-if value="{{ r.checked }}" hint-placeholder-val=""><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-11"></path></svg></sc-if>
+              </span>
+            </span>
+            <span style="display:flex;align-items:center;gap:7px;min-width:0">
+              <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#E4E4E7;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.id }}</span>
+              <span onClick="{{ r.onCopy }}" title="Copy job ID" style="flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:4px;color:{{ r.copyColor }};cursor:pointer" style-hover="background:#242428;color:#A1A1AA">
+                <sc-if value="{{ r.copied }}" hint-placeholder-val="">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-11"></path></svg>
+                </sc-if>
+                <sc-if value="{{ r.notCopied }}" hint-placeholder-val="">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V5a2 2 0 0 1 2-2h10"></path></svg>
+                </sc-if>
+              </span>
+            </span>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#52525B;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.key }}</span>
+            <span><span style="display:inline-flex;align-items:center;gap:6px;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:500;background:{{ r.rtBg }};color:{{ r.rtColor }}"><span style="width:5px;height:5px;border-radius:50%;background:{{ r.rtColor }}"></span>{{ r.runtime }}</span></span>
+            <span><span style="display:inline-flex;align-items:center;gap:6px;padding:2px 9px;border-radius:6px;font-size:11px;font-weight:500;background:{{ r.stBg }};color:{{ r.stColor }}"><span style="width:6px;height:6px;border-radius:50%;background:{{ r.stColor }};box-shadow:{{ r.stGlow }}"></span>{{ r.statusLabel }}</span></span>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:{{ r.attemptColor }}">{{ r.attempts }}</span>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#A1A1AA">{{ r.duration }}</span>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#52525B" title="{{ r.fullTime }}">{{ r.created }}</span>
+            <span style="position:relative;display:flex;justify-content:flex-end">
+              <span onClick="{{ r.onMenu }}" style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:6px;color:#71717A;cursor:pointer" style-hover="background:#242428;color:#FAFAFA">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6"></circle><circle cx="12" cy="12" r="1.6"></circle><circle cx="12" cy="19" r="1.6"></circle></svg>
+              </span>
+              <sc-if value="{{ r.menuOpen }}" hint-placeholder-val="">
+                <div style="position:absolute;top:calc(100% + 4px);right:0;z-index:25;min-width:134px;background:#161619;border:1px solid #2a2a30;border-radius:9px;padding:5px;box-shadow:0 12px 32px rgba(0,0,0,.6);animation:dbar .12s ease-out">
+                  <sc-for list="{{ r.menuItems }}" as="m" hint-placeholder-count="3">
+                    <div onClick="{{ m.on }}" style="display:flex;align-items:center;gap:9px;padding:6px 9px;border-radius:6px;font-size:12px;color:{{ m.color }};cursor:pointer" style-hover="background:#1f1f24">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="{{ m.color }}" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="{{ m.d }}"></path></svg>{{ m.name }}
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if>
+            </span>
+          </div>
+        </sc-for>
+
+        <sc-if value="{{ empty }}" hint-placeholder-val="">
+          <div style="padding:52px 16px;text-align:center;color:#52525B;font-size:13px">No jobs match your filters.</div>
+        </sc-if>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding-bottom:6px">
+        <span style="font-size:12px;color:#71717A">Showing <span style="font-family:'JetBrains Mono',monospace;color:#A1A1AA">{{ pageFrom }}–{{ pageTo }}</span> of <span style="font-family:'JetBrains Mono',monospace;color:#A1A1AA">12,847</span></span>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
+          <span style="font-size:12px;color:#71717A">Rows</span>
+          <button onClick="{{ togglePerPage }}" style="position:relative;display:flex;align-items:center;gap:7px;padding:5px 9px;background:#141416;border:1px solid #242428;border-radius:7px;color:#D4D4D8;font-size:12px;font-family:'JetBrains Mono',monospace;cursor:pointer" style-hover="border-color:#33333a">
+            {{ perPage }}
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#52525B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>
+            <sc-if value="{{ perPageOpen }}" hint-placeholder-val="">
+              <div style="position:absolute;bottom:calc(100% + 6px);left:0;z-index:20;min-width:68px;background:#161619;border:1px solid #2a2a30;border-radius:9px;padding:5px;box-shadow:0 12px 32px rgba(0,0,0,.6)">
+                <sc-for list="{{ perPageOptions }}" as="p" hint-placeholder-count="3">
+                  <div onClick="{{ p.pick }}" style="padding:5px 9px;border-radius:6px;font-size:12px;font-family:'JetBrains Mono',monospace;color:{{ p.color }};cursor:pointer" style-hover="background:#1f1f24">{{ p.n }}</div>
+                </sc-for>
+              </div>
+            </sc-if>
+          </button>
+        </div>
+        <div style="display:flex;align-items:center;gap:4px">
+          <sc-for list="{{ pager }}" as="p" hint-placeholder-count="4">
+            <button onClick="{{ p.on }}" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:#141416;border:1px solid #242428;border-radius:7px;color:{{ p.color }};cursor:{{ p.cursor }};font-family:'JetBrains Mono',monospace;font-size:13px" style-hover="border-color:#33333a">{{ p.glyph }}</button>
+          </sc-for>
+          <span style="font-size:12px;color:#A1A1AA;padding:0 8px">Page <span style="font-family:'JetBrains Mono',monospace;color:#FAFAFA">{{ page }}</span> of <span style="font-family:'JetBrains Mono',monospace;color:#A1A1AA">857</span></span>
+          <sc-for list="{{ pagerNext }}" as="p" hint-placeholder-count="2">
+            <button onClick="{{ p.on }}" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:#141416;border:1px solid #242428;border-radius:7px;color:{{ p.color }};cursor:{{ p.cursor }};font-family:'JetBrains Mono',monospace;font-size:13px" style-hover="border-color:#33333a">{{ p.glyph }}</button>
+          </sc-for>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;$preview&quot;: { &quot;width&quot;: 1320, &quot;height&quot;: 860 },
+  &quot;rowsPerPage&quot;: { &quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [15, 25, 50, 100], &quot;default&quot;: 15, &quot;tsType&quot;: &quot;number&quot;, &quot;section&quot;: &quot;Table&quot; }
+}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.rootRef = React.createRef();
+    this.searchRef = React.createRef();
+    this.state = {
+      query: '', status: 'all', runtime: 'all', range: '7d',
+      openDrop: null, perPage: props.rowsPerPage || 15, perPageOpen: false,
+      page: 1, selected: {}, focusIdx: 0, openMenu: null, copiedId: null
+    };
+  }
+
+  STATUS = {
+    success:   { label: 'Success',   c: '#22C55E', b: 'rgba(34,197,94,.12)' },
+    running:   { label: 'Running',   c: '#3B82F6', b: 'rgba(59,130,246,.12)' },
+    failed:    { label: 'Failed',    c: '#EF4444', b: 'rgba(239,68,68,.12)' },
+    pending:   { label: 'Pending',   c: '#EAB308', b: 'rgba(234,179,8,.12)' },
+    queued:    { label: 'Queued',    c: '#A1A1AA', b: 'rgba(161,161,170,.12)' },
+    cancelled: { label: 'Cancelled', c: '#71717A', b: 'rgba(113,113,122,.12)' }
+  };
+
+  ALL = [
+    ['job_a3f81b2c4d9e21','evt_checkout_8812','Python','success','1/3','142ms','2m ago','Oct 4, 2026 14:32:07'],
+    ['job_b7e42f9081ca55','user_sync_44120','Node','running','2/3','—','3m ago','Oct 4, 2026 14:31:14'],
+    ['job_c1d93a4e76f810','—','Python','failed','3/3','5.10s','5m ago','Oct 4, 2026 14:29:48'],
+    ['job_d4f807c2b9e133','email_digest_9931','Node','success','1/3','831ms','8m ago','Oct 4, 2026 14:26:02'],
+    ['job_e5a21f8d630b77','—','Python','queued','0/3','—','9m ago','Oct 4, 2026 14:25:19'],
+    ['job_f0c738a19d4e62','webhook_retry_5570','Node','pending','0/3','—','12m ago','Oct 4, 2026 14:22:41'],
+    ['job_90b12e4c8a7f03','report_gen_2048','Python','success','2/3','2.37s','15m ago','Oct 4, 2026 14:19:55'],
+    ['job_81a4d6f20c9b14','—','Node','success','1/3','592ms','18m ago','Oct 4, 2026 14:16:30'],
+    ['job_72c3e9a1b58d06','billing_run_7781','Python','failed','3/3','4.42s','23m ago','Oct 4, 2026 14:11:12'],
+    ['job_63f8b0d4e27a91','img_resize_3390','Node','running','1/3','—','26m ago','Oct 4, 2026 14:08:44'],
+    ['job_54a9c7e3f1b082','—','Python','success','1/3','318ms','31m ago','Oct 4, 2026 14:03:27'],
+    ['job_45d1f8a6b0c973','notify_push_6612','Node','cancelled','1/3','—','38m ago','Oct 4, 2026 13:56:03'],
+    ['job_36e2a9c4d7f165','etl_nightly_1104','Python','success','2/3','12.8s','44m ago','Oct 4, 2026 13:50:18'],
+    ['job_27b4f0e1a9d358','—','Node','pending','0/3','—','52m ago','Oct 4, 2026 13:42:51'],
+    ['job_18c6d3b8f2a047','cache_warm_8820','Python','queued','0/3','—','1h ago','Oct 4, 2026 13:30:09']
+  ].map(a => ({ id: a[0], key: a[1], runtime: a[2], status: a[3], attempts: a[4], duration: a[5], created: a[6], fullTime: a[7] }));
+
+  componentDidMount() {
+    this._key = (e) => {
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod && e.key.toLowerCase() === 'f') { e.preventDefault(); this.searchRef.current && this.searchRef.current.focus(); }
+    };
+    this._out = (e) => {
+      if (this.rootRef.current && !this.rootRef.current.contains(e.target)) return;
+      this.setState({ openDrop: null, openMenu: null, perPageOpen: false });
+    };
+    window.addEventListener('keydown', this._key);
+    document.addEventListener('click', this._out, true);
+  }
+  componentWillUnmount() {
+    window.removeEventListener('keydown', this._key);
+    document.removeEventListener('click', this._out, true);
+  }
+
+  filtered() {
+    const q = this.state.query.trim().toLowerCase();
+    return this.ALL.filter(r => {
+      if (this.state.status !== 'all' && r.status !== this.state.status) return false;
+      if (this.state.runtime !== 'all' && r.runtime.toLowerCase() !== this.state.runtime) return false;
+      if (q && !(r.id.toLowerCase().includes(q) || r.key.toLowerCase().includes(q))) return false;
+      return true;
+    });
+  }
+
+  onKey = (e) => {
+    const list = this.filtered();
+    if (!list.length) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); this.setState(s => ({ focusIdx: Math.min(list.length - 1, s.focusIdx + 1), openMenu: null })); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); this.setState(s => ({ focusIdx: Math.max(0, s.focusIdx - 1), openMenu: null })); }
+    else if (e.key === 'Enter') { e.preventDefault(); const r = list[this.state.focusIdx]; if (r) this.openJob(r.id); }
+    else if (e.key === ' ') {
+      e.preventDefault(); const r = list[this.state.focusIdx];
+      if (r) this.setState(s => ({ selected: { ...s.selected, [r.id]: !s.selected[r.id] } }));
+    } else if (e.key === 'Escape') { this.setState({ openMenu: null, openDrop: null, selected: {} }); }
+  };
+
+  openJob = (id) => { console.log('open', id); };
+  copyId = (id, e) => {
+    if (e) e.stopPropagation();
+    try { navigator.clipboard && navigator.clipboard.writeText(id); } catch (x) {}
+    this.setState({ copiedId: id });
+    clearTimeout(this._cp); this._cp = setTimeout(() => this.setState({ copiedId: null }), 1200);
+  };
+
+  toggleDrop = (k, e) => { if (e) e.stopPropagation(); this.setState(s => ({ openDrop: s.openDrop === k ? null : k, openMenu: null, perPageOpen: false })); };
+  pick = (k, v, e) => { if (e) e.stopPropagation(); this.setState({ [k]: v, openDrop: null, page: 1, focusIdx: 0 }); };
+  clearFilters = () => this.setState({ query: '', status: 'all', runtime: 'all', range: '7d', page: 1, focusIdx: 0 });
+  onQuery = (e) => this.setState({ query: e.target.value, page: 1, focusIdx: 0 });
+
+  toggleRow = (id, e) => { if (e) e.stopPropagation(); this.setState(s => ({ selected: { ...s.selected, [id]: !s.selected[id] } })); };
+  toggleAll = () => {
+    const list = this.filtered();
+    const allOn = list.length && list.every(r => this.state.selected[r.id]);
+    const sel = {};
+    if (!allOn) list.forEach(r => sel[r.id] = true);
+    this.setState({ selected: sel });
+  };
+  clearSel = () => this.setState({ selected: {} });
+  toggleMenu = (id, e) => { if (e) e.stopPropagation(); this.setState(s => ({ openMenu: s.openMenu === id ? null : id, openDrop: null })); };
+
+  togglePerPage = (e) => { if (e) e.stopPropagation(); this.setState(s => ({ perPageOpen: !s.perPageOpen, openDrop: null, openMenu: null })); };
+  setPerPage = (n, e) => { if (e) e.stopPropagation(); this.setState({ perPage: n, perPageOpen: false, page: 1 }); };
+  goPage = (p) => this.setState({ page: Math.max(1, Math.min(857, p)) });
+
+  renderVals() {
+    const list = this.filtered();
+    const selIds = Object.keys(this.state.selected).filter(k => this.state.selected[k]);
+    const selCount = selIds.length;
+    const allOn = list.length && list.every(r => this.state.selected[r.id]);
+    const someOn = selCount > 0 && !allOn;
+
+    const statusOpts = [['all', 'All Statuses', null]].concat(
+      ['pending', 'queued', 'running', 'success', 'failed', 'cancelled'].map(k => [k, this.STATUS[k].label, this.STATUS[k].c])
+    );
+    const runtimeOpts = [['all', 'All Runtimes', null], ['python', 'Python', '#3B82F6'], ['node', 'Node', '#22C55E']];
+    const rangeOpts = [['24h', 'Last 24 hours'], ['7d', 'Last 7 days'], ['30d', 'Last 30 days'], ['90d', 'Last 90 days']];
+
+    const mkDrop = (key, stateKey, prefix, opts, labelFn) => {
+      const cur = this.state[stateKey];
+      const active = this.state.openDrop === key;
+      return {
+        toggle: (e) => this.toggleDrop(key, e),
+        open: active,
+        prefix: prefix,
+        label: labelFn(cur),
+        border: active ? '#8B5CF6' : '#242428',
+        color: '#D4D4D8',
+        options: opts.map(o => ({
+          name: o[1], dot: o[2] || '', active: cur === o[0],
+          color: cur === o[0] ? '#FAFAFA' : '#A1A1AA',
+          pick: (e) => this.pick(stateKey, o[0], e)
+        }))
+      };
+    };
+
+    const dropdowns = [
+      mkDrop('status', 'status', '', statusOpts, v => v === 'all' ? 'All Statuses' : this.STATUS[v].label),
+      mkDrop('runtime', 'runtime', '', runtimeOpts, v => v === 'all' ? 'All Runtimes' : (v === 'python' ? 'Python' : 'Node')),
+      mkDrop('range', 'range', '', rangeOpts, v => (rangeOpts.find(o => o[0] === v) || rangeOpts[1])[1])
+    ];
+
+    const chips = [];
+    if (this.state.status !== 'all') chips.push({ kind: 'Status: ', label: this.STATUS[this.state.status].label, remove: () => this.setState({ status: 'all', page: 1 }) });
+    if (this.state.runtime !== 'all') chips.push({ kind: 'Runtime: ', label: this.state.runtime === 'python' ? 'Python' : 'Node', remove: () => this.setState({ runtime: 'all', page: 1 }) });
+    if (this.state.query.trim()) chips.push({ kind: 'Search: ', label: this.state.query.trim(), remove: () => this.setState({ query: '', page: 1 }) });
+    const hasFilters = this.state.status !== 'all' || this.state.runtime !== 'all' || this.state.range !== '7d' || !!this.state.query.trim();
+
+    const menuFor = (r) => [
+      { name: 'View', d: 'M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z', color: '#D4D4D8', on: (e) => { if (e) e.stopPropagation(); this.openJob(r.id); this.setState({ openMenu: null }); } },
+      { name: 'Retry', d: 'M3 12a9 9 0 1 0 3-6.7M3 3v4h4', color: '#D4D4D8', on: (e) => { if (e) e.stopPropagation(); this.setState({ openMenu: null }); } },
+      { name: 'Cancel', d: 'M18 6 6 18M6 6l12 12', color: '#EF4444', on: (e) => { if (e) e.stopPropagation(); this.setState({ openMenu: null }); } }
+    ];
+
+    const rows = list.map((r, i) => {
+      const st = this.STATUS[r.status];
+      const checked = !!this.state.selected[r.id];
+      const focused = i === this.state.focusIdx;
+      const copied = this.state.copiedId === r.id;
+      const [cur, max] = r.attempts.split('/');
+      const attemptColor = r.status === 'failed' && cur === max ? '#EF4444' : (parseInt(cur) > 1 ? '#EAB308' : '#A1A1AA');
+      return {
+        id: r.id, key: r.key, runtime: r.runtime, duration: r.duration, created: r.created, fullTime: r.fullTime,
+        attempts: r.attempts, attemptColor,
+        statusLabel: st.label, stColor: st.c, stBg: st.b,
+        stGlow: r.status === 'running' ? '0 0 6px ' + st.c : 'none',
+        rtColor: r.runtime === 'Python' ? '#3B82F6' : '#22C55E',
+        rtBg: r.runtime === 'Python' ? 'rgba(59,130,246,.1)' : 'rgba(34,197,94,.1)',
+        checked, cbBorder: checked ? '#8B5CF6' : '#3f3f46', cbBg: checked ? '#8B5CF6' : 'transparent',
+        rowBg: checked ? 'rgba(139,92,246,.07)' : (focused ? '#161619' : 'transparent'),
+        focus: focused ? 'inset 2px 0 0 #8B5CF6' : 'none',
+        copied, notCopied: !copied, copyColor: copied ? '#22C55E' : '#3f3f46',
+        onRow: () => this.openJob(r.id),
+        onCheck: (e) => this.toggleRow(r.id, e),
+        onCopy: (e) => this.copyId(r.id, e),
+        onMenu: (e) => this.toggleMenu(r.id, e),
+        menuOpen: this.state.openMenu === r.id,
+        menuItems: menuFor(r)
+      };
+    });
+
+    const bulkActions = [
+      { name: 'Retry', d: 'M3 12a9 9 0 1 0 3-6.7M3 3v4h4', color: '#A78BFA', on: () => this.setState({ selected: {} }) },
+      { name: 'Cancel', d: 'M18 6 6 18M6 6l12 12', color: '#EF4444', on: () => this.setState({ selected: {} }) },
+      { name: 'Export', d: 'M12 3v12M7 10l5 5 5-5M4 19h16', color: '#A78BFA', on: () => {} }
+    ];
+
+    const perPage = this.state.perPage;
+    const pageFrom = (this.state.page - 1) * perPage + 1;
+    const pageTo = (this.state.page - 1) * perPage + list.length;
+
+    const navItem = (p) => ({
+      glyph: p.g, on: () => p.d && this.goPage(p.to),
+      color: p.d ? '#A1A1AA' : '#3f3f46', cursor: p.d ? 'pointer' : 'not-allowed'
+    });
+    const pg = this.state.page;
+    const pager = [
+      navItem({ g: '«', d: pg > 1, to: 1 }),
+      navItem({ g: '‹', d: pg > 1, to: pg - 1 })
+    ];
+    const pagerNext = [
+      navItem({ g: '›', d: pg < 857, to: pg + 1 }),
+      navItem({ g: '»', d: pg < 857, to: 857 })
+    ];
+
+    const ic = (active) => active ? '#8B5CF6' : '#71717A';
+    const mk = (name, d, o = {}) => ({
+      name, d, badge: o.badge || '',
+      bg: o.active ? '#18181b' : 'transparent', color: o.active ? '#FAFAFA' : '#A1A1AA',
+      dot: o.active ? '#8B5CF6' : 'transparent', iconColor: ic(o.active)
+    });
+    const navSections = [
+      { title: 'OVERVIEW', items: [
+        mk('Dashboard', 'M4 4h7v7H4zM13 4h7v4h-7zM13 11h7v9h-7zM4 14h7v6H4z'),
+        mk('Jobs', 'M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01', { active: true }),
+        mk('Executions', 'M4 12h4l2 6 4-15 2 9h4')
+      ] },
+      { title: 'RELIABILITY', items: [
+        mk('Dead Letter Queue', 'M12 3 2 20h20zM12 10v4M12 17h.01', { badge: '23' }),
+        mk('Webhooks', 'M13 3 4 14h7l-1 7 9-11h-7z')
+      ] },
+      { title: 'INSIGHTS', items: [
+        mk('Analytics', 'M4 4v16h16M8 16V11M13 16V7M18 16v-5'),
+        mk('Usage', 'M12 3a9 9 0 1 0 9 9h-9z')
+      ] },
+      { title: 'SETTINGS', items: [
+        mk('API Keys', 'M10 14a5 5 0 1 1 5-5l6 6-2 2-2-2-2 2-2-2z'),
+        mk('Billing', 'M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM3 11h18'),
+        mk('Settings', 'M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1')
+      ] }
+    ];
+
+    return {
+      rootRef: this.rootRef, searchRef: this.searchRef, onKey: this.onKey,
+      query: this.state.query, onQuery: this.onQuery,
+      dropdowns, hasFilters, clearFilters: this.clearFilters,
+      chips, hasChips: chips.length > 0,
+      rows, empty: list.length === 0,
+      allBox: { border: allOn || someOn ? '#8B5CF6' : '#3f3f46', bg: allOn || someOn ? '#8B5CF6' : 'transparent', check: allOn ? 'M5 12l5 5 9-11' : (someOn ? 'M6 12h12' : '') },
+      toggleAll: this.toggleAll,
+      selCount, bulkActions, clearSel: this.clearSel,
+      pageFrom, pageTo, perPage, page: pg,
+      perPageOpen: this.state.perPageOpen, togglePerPage: this.togglePerPage,
+      perPageOptions: [15, 25, 50, 100].map(n => ({ n, color: n === perPage ? '#FAFAFA' : '#A1A1AA', pick: (e) => this.setPerPage(n, e) })),
+      pager, pagerNext, navSections
+    };
+  }
+}
+</script>
+</body>
+</html>

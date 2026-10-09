@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #0A0A0B; }
+  a { color: #8B5CF6; text-decoration: none; }
+  a:hover { color: #A78BFA; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: #242428; border-radius: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  @keyframes dpulse { 0%{box-shadow:0 0 0 0 rgba(239,68,68,.5)} 70%{box-shadow:0 0 0 5px rgba(239,68,68,0)} 100%{box-shadow:0 0 0 0 rgba(239,68,68,0)} }
+  @keyframes dbar { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+  input.djd-search { background:transparent;border:none;outline:none;color:#FAFAFA;font-family:'JetBrains Mono',monospace;font-size:12px;flex:1;min-width:0; }
+  input.djd-search::placeholder { color:#52525B; }
+</style>
+</helmet>
+<div style="display:grid;grid-template-columns:240px minmax(0,1fr);height:100vh;width:100%;background:#0A0A0B;color:#FAFAFA;font-family:Inter,sans-serif;font-size:13px;overflow:hidden;-webkit-font-smoothing:antialiased">
+
+  <aside style="display:flex;flex-direction:column;background:#0A0A0B;border-right:1px solid #242428;min-height:0">
+    <div style="display:flex;align-items:center;gap:9px;padding:16px 16px 14px;border-bottom:1px solid #161619">
+      <div style="width:24px;height:24px;border-radius:6px;background:#8B5CF6;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:#fff;letter-spacing:-.02em">D</div>
+      <span style="font-size:15px;font-weight:600;letter-spacing:-.01em">Durabl</span>
+      <span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:9px;color:#52525B;border:1px solid #242428;border-radius:4px;padding:1px 5px">v2.4</span>
+    </div>
+    <nav style="flex:1;overflow-y:auto;padding:12px 10px;display:flex;flex-direction:column;gap:14px">
+      <sc-for list="{{ navSections }}" as="section" hint-placeholder-count="4">
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <div style="font-size:10px;font-weight:600;letter-spacing:.09em;color:#52525B;padding:4px 10px 4px">{{ section.title }}</div>
+          <sc-for list="{{ section.items }}" as="item" hint-placeholder-count="3">
+            <div style="position:relative;display:flex;align-items:center;gap:9px;padding:6px 10px;border-radius:6px;cursor:pointer;line-height:1;background:{{ item.bg }};color:{{ item.color }}" style-hover="background:#161619;color:#FAFAFA">
+              <span style="position:absolute;left:-10px;top:50%;transform:translateY(-50%);width:2px;height:15px;border-radius:0 2px 2px 0;background:{{ item.dot }}"></span>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="{{ item.iconColor }}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="{{ item.d }}"></path></svg>
+              <span style="flex:1">{{ item.name }}</span>
+              <sc-if value="{{ item.badge }}" hint-placeholder-val=""><span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:500;padding:1px 6px;border-radius:5px;background:rgba(239,68,68,.14);color:#EF4444">{{ item.badge }}</span></sc-if>
+            </div>
+          </sc-for>
+        </div>
+      </sc-for>
+    </nav>
+    <div style="border-top:1px solid #161619;padding:10px;display:flex;align-items:center;gap:9px;cursor:pointer" style-hover="background:#0f0f10">
+      <div style="width:28px;height:28px;border-radius:50%;background:#242428;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#D4D4D8">JD</div>
+      <div style="flex:1;min-width:0;line-height:1.25">
+        <div style="font-size:12px;font-weight:500;color:#FAFAFA">Jordan Diaz</div>
+        <div style="font-size:11px;color:#52525B;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">jordan@durabl.dev</div>
+      </div>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#52525B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"></path></svg>
+    </div>
+  </aside>
+
+  <main style="display:flex;flex-direction:column;min-width:0;min-height:0">
+
+    <header style="height:52px;flex-shrink:0;display:flex;align-items:center;gap:16px;padding:0 20px;border-bottom:1px solid #242428;background:#0A0A0B">
+      <div style="display:flex;align-items:center;gap:7px;font-size:13px;min-width:0">
+        <span style="color:#71717A">Durabl</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3f3f46" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg>
+        <a href="#" style="color:#71717A">Jobs</a>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3f3f46" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg>
+        <span style="color:#FAFAFA;font-weight:500;font-family:'JetBrains Mono',monospace;font-size:12px">job_a3f8…e21</span>
+      </div>
+      <div style="flex:1;display:flex;justify-content:center">
+        <div style="display:flex;align-items:center;gap:8px;width:100%;max-width:400px;padding:6px 10px;background:#141416;border:1px solid #242428;border-radius:8px;cursor:text" style-hover="border-color:#33333a">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#52525B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4a6 6 0 1 0 0 12 6 6 0 0 0 0-12zM20 20l-4.3-4.3"></path></svg>
+          <span style="flex:1;color:#52525B;font-size:12px">Search jobs, executions, workers…</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#A1A1AA;border:1px solid #242428;border-radius:4px;padding:1px 6px;background:#0f0f10">⌘K</span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <button aria-label="Notifications" style="position:relative;width:32px;height:32px;display:flex;align-items:center;justify-content:center;background:transparent;border:1px solid transparent;border-radius:7px;cursor:pointer" style-hover="background:#161619;border-color:#242428">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A1A1AA" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 1 1 12 0c0 5 2 6 2 6H4s2-1 2-6zM10 20a2 2 0 0 0 4 0"></path></svg>
+          <span style="position:absolute;top:6px;right:7px;width:6px;height:6px;border-radius:50%;background:#EF4444;border:1.5px solid #0A0A0B"></span>
+        </button>
+        <div style="width:1px;height:20px;background:#242428;margin:0 4px"></div>
+        <div style="width:30px;height:30px;border-radius:50%;background:#242428;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#D4D4D8;cursor:pointer">JD</div>
+      </div>
+    </header>
+
+    <div style="flex:1;overflow-y:auto;min-height:0;padding:22px 24px;display:flex;flex-direction:column;gap:18px">
+
+      <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap">
+        <div style="min-width:0">
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <h1 style="margin:0;font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;letter-spacing:-.01em;color:#FAFAFA">job_a3f81b2c4d9e21</h1>
+            <button onClick="{{ copyId }}" aria-label="Copy job ID" style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:7px;background:#141416;border:1px solid #242428;color:{{ copyColor }};cursor:pointer" style-hover="border-color:#33333a;color:#A1A1AA">
+              <sc-if value="{{ copied }}" hint-placeholder-val=""><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-11"></path></svg></sc-if>
+              <sc-if value="{{ notCopied }}" hint-placeholder-val=""><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V5a2 2 0 0 1 2-2h10"></path></svg></sc-if>
+            </button>
+            <span style="display:inline-flex;align-items:center;gap:8px;padding:5px 12px;border-radius:8px;font-size:13px;font-weight:600;background:rgba(239,68,68,.13);color:#EF4444;border:1px solid rgba(239,68,68,.25)">
+              <span style="width:8px;height:8px;border-radius:50%;background:#EF4444;animation:dpulse 2s infinite"></span>Failed
+            </span>
+          </div>
+        </div>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
+          <button style="display:flex;align-items:center;gap:7px;padding:7px 13px;background:#8B5CF6;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:500;font-family:Inter,sans-serif;cursor:pointer" style-hover="background:#7C4DF0">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7M3 3v4h4"></path></svg>Retry
+          </button>
+          <button style="display:flex;align-items:center;gap:7px;padding:7px 13px;background:#141416;border:1px solid #242428;border-radius:8px;color:#D4D4D8;font-size:13px;font-weight:500;font-family:Inter,sans-serif;cursor:pointer" style-hover="border-color:#33333a">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A1A1AA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"></path></svg>Cancel
+          </button>
+          <button aria-label="More actions" style="width:34px;height:34px;display:flex;align-items:center;justify-content:center;background:#141416;border:1px solid #242428;border-radius:8px;color:#A1A1AA;cursor:pointer" style-hover="border-color:#33333a;color:#FAFAFA">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"></circle><circle cx="12" cy="12" r="1.6"></circle><circle cx="19" cy="12" r="1.6"></circle></svg>
+          </button>
+        </div>
+      </div>
+
+      <div style="flex-shrink:0;display:flex;flex-wrap:wrap;gap:0;background:#141416;border:1px solid #242428;border-radius:10px;overflow:hidden">
+        <sc-for list="{{ meta }}" as="m" hint-placeholder-count="8">
+          <div style="flex:1 1 auto;min-width:150px;padding:11px 15px;border-right:1px solid #1E1E22;border-bottom:1px solid #1E1E22">
+            <div style="font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#52525B">{{ m.k }}</div>
+            <div style="margin-top:5px;font-size:13px;color:{{ m.color }};font-family:{{ m.font }}">{{ m.v }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="background:#141416;border:1px solid #242428;border-radius:12px;padding:18px 20px">
+        <div style="font-size:13px;font-weight:600;color:#D4D4D8;margin-bottom:16px">Lifecycle</div>
+        <div style="display:flex;align-items:flex-start;gap:0;overflow-x:auto;padding-bottom:4px">
+          <sc-for list="{{ steps }}" as="s" hint-placeholder-count="5">
+            <div style="display:flex;align-items:flex-start;flex:1;min-width:120px">
+              <div style="display:flex;flex-direction:column;align-items:center;gap:8px;flex-shrink:0;width:48px">
+                <div style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:{{ s.dotBg }};border:1.5px solid {{ s.dotBorder }}">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{{ s.iconColor }}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="{{ s.d }}"></path></svg>
+                </div>
+              </div>
+              <div style="flex:1;min-width:0;margin-left:-6px;margin-right:6px">
+                <div style="display:flex;align-items:center;height:32px">
+                  <div style="flex:1;height:2px;border-radius:2px;background:{{ s.lineColor }};opacity:{{ s.lineShow }}"></div>
+                </div>
+                <div style="margin-top:8px;padding-left:2px">
+                  <div style="font-size:12px;font-weight:600;color:{{ s.labelColor }}">{{ s.label }}</div>
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#52525B;margin-top:3px">{{ s.time }}</div>
+                  <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:{{ s.gapColor }};margin-top:2px">{{ s.gap }}</div>
+                </div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="background:#141416;border:1px solid #242428;border-radius:12px;overflow:hidden">
+        <div style="display:flex;align-items:center;gap:4px;padding:0 6px;border-bottom:1px solid #1E1E22">
+          <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="2">
+            <button onClick="{{ t.on }}" style="position:relative;padding:13px 14px 12px;background:transparent;border:none;font-family:Inter,sans-serif;font-size:13px;font-weight:500;color:{{ t.color }};cursor:pointer;display:flex;align-items:center;gap:7px">
+              {{ t.label }}
+              <sc-if value="{{ t.count }}" hint-placeholder-val=""><span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;padding:1px 6px;border-radius:5px;background:{{ t.badgeBg }};color:{{ t.badgeColor }}">{{ t.count }}</span></sc-if>
+              <span style="position:absolute;left:8px;right:8px;bottom:-1px;height:2px;border-radius:2px;background:{{ t.underline }}"></span>
+            </button>
+          </sc-for>
+        </div>
+
+        <sc-if value="{{ showLogs }}" hint-placeholder-val="{{ true }}">
+          <div>
+            <div style="display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid #1E1E22;flex-wrap:wrap">
+              <div style="display:flex;align-items:center;gap:8px;width:240px;max-width:100%;padding:6px 10px;background:#0A0A0B;border:1px solid #242428;border-radius:7px" style-hover="border-color:#33333a">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#52525B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4a6 6 0 1 0 0 12 6 6 0 0 0 0-12zM20 20l-4.3-4.3"></path></svg>
+                <input ref="{{ logSearchRef }}" class="djd-search" placeholder="Filter logs…" value="{{ logFilter }}" onChange="{{ onLogFilter }}" />
+                <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#52525B;border:1px solid #242428;border-radius:4px;padding:1px 5px">⌘F</span>
+              </div>
+              <label style="display:flex;align-items:center;gap:7px;font-size:12px;color:#A1A1AA;cursor:pointer;user-select:none" onClick="{{ toggleScroll }}">
+                <span style="width:30px;height:17px;border-radius:9px;background:{{ scrollTrack }};position:relative;transition:background .15s"><span style="position:absolute;top:2px;left:{{ scrollKnob }};width:13px;height:13px;border-radius:50%;background:#fff;transition:left .15s"></span></span>
+                Auto-scroll
+              </label>
+              <div style="margin-left:auto;display:flex;align-items:center;gap:7px">
+                <button style="display:flex;align-items:center;gap:6px;padding:6px 11px;background:#0A0A0B;border:1px solid #242428;border-radius:7px;color:#A1A1AA;font-size:12px;font-family:Inter,sans-serif;cursor:pointer" style-hover="border-color:#33333a;color:#FAFAFA">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M4 19h16"></path></svg>Download
+                </button>
+                <button onClick="{{ copyLogs }}" style="display:flex;align-items:center;gap:6px;padding:6px 11px;background:#0A0A0B;border:1px solid #242428;border-radius:7px;color:{{ logCopyColor }};font-size:12px;font-family:Inter,sans-serif;cursor:pointer" style-hover="border-color:#33333a;color:#FAFAFA">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V5a2 2 0 0 1 2-2h10"></path></svg>{{ logCopyLabel }}
+                </button>
+              </div>
+            </div>
+            <div style="background:#09090A;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.7;max-height:360px;overflow:auto;padding:10px 0">
+              <sc-for list="{{ logs }}" as="l" hint-placeholder-count="15">
+                <div style="display:flex;align-items:baseline;gap:0;padding:1px 16px 1px 0" style-hover="background:#111113">
+                  <span style="flex-shrink:0;width:46px;text-align:right;color:#3f3f46;user-select:none;padding-right:14px">{{ l.n }}</span>
+                  <span style="flex-shrink:0;color:#52525B;margin-right:12px">{{ l.ts }}</span>
+                  <span style="flex-shrink:0;width:54px;margin-right:12px;font-size:10px;font-weight:600;color:{{ l.streamColor }}">{{ l.stream }}</span>
+                  <span style="color:{{ l.textColor }};white-space:pre-wrap;word-break:break-word;min-width:0">{{ l.text }}</span>
+                </div>
+              </sc-for>
+              <sc-if value="{{ logsEmpty }}" hint-placeholder-val="">
+                <div style="padding:30px 16px;color:#52525B;text-align:center">No log lines match the filter.</div>
+              </sc-if>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ showAttempts }}" hint-placeholder-val="">
+          <div>
+            <div style="display:grid;grid-template-columns:70px minmax(80px,1fr) 150px 84px 74px 100px 44px;align-items:center;padding:10px 16px;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#52525B;border-bottom:1px solid #1E1E22">
+              <span>Attempt</span><span>Worker</span><span>Started</span><span>Duration</span><span>Exit</span><span>Status</span><span></span>
+            </div>
+            <sc-for list="{{ attempts }}" as="a" hint-placeholder-count="3">
+              <div>
+                <div onClick="{{ a.toggle }}" style="display:grid;grid-template-columns:70px minmax(80px,1fr) 150px 84px 74px 100px 44px;align-items:center;padding:0 16px;height:44px;border-bottom:1px solid #161619;cursor:pointer" style-hover="background:#18181b">
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#D4D4D8;font-weight:500">#{{ a.num }}</span>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#A1A1AA;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ a.worker }}</span>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#52525B">{{ a.started }}</span>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#A1A1AA">{{ a.duration }}</span>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#EF4444">{{ a.exit }}</span>
+                  <span><span style="display:inline-flex;align-items:center;gap:6px;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:500;background:rgba(239,68,68,.12);color:#EF4444"><span style="width:6px;height:6px;border-radius:50%;background:#EF4444"></span>Failed</span></span>
+                  <span style="display:flex;justify-content:flex-end;color:#52525B"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform:rotate({{ a.caret }});transition:transform .15s"><path d="M9 6l6 6-6 6"></path></svg></span>
+                </div>
+                <sc-if value="{{ a.open }}" hint-placeholder-val="">
+                  <div style="padding:12px 16px 14px 16px;border-bottom:1px solid #161619;background:#0d0d0e;animation:dbar .14s ease-out">
+                    <div style="font-size:11px;font-weight:600;color:#71717A;margin-bottom:8px">Error detail — attempt #{{ a.num }}</div>
+                    <pre style="margin:0;font-family:'JetBrains Mono',monospace;font-size:11.5px;line-height:1.65;color:#FCA5A5;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.18);border-radius:8px;padding:12px 14px;overflow-x:auto;white-space:pre">{{ a.error }}</pre>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+      </div>
+
+      <div style="background:#141416;border:1px solid #242428;border-radius:12px;overflow:hidden">
+        <div onClick="{{ toggleCode }}" style="display:flex;align-items:center;gap:10px;padding:14px 16px;cursor:pointer;border-bottom:1px solid {{ codeBorder }}" style-hover="background:#18181b">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#52525B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform:rotate({{ codeCaret }});transition:transform .15s"><path d="M9 6l6 6-6 6"></path></svg>
+          <span style="font-size:14px;font-weight:600;color:#FAFAFA">Submitted Code</span>
+          <span style="display:inline-flex;align-items:center;gap:6px;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:500;background:rgba(59,130,246,.1);color:#3B82F6"><span style="width:5px;height:5px;border-radius:50%;background:#3B82F6"></span>Python 3.12</span>
+          <button onClick="{{ copyCode }}" style="margin-left:auto;display:flex;align-items:center;gap:6px;padding:5px 10px;background:#0A0A0B;border:1px solid #242428;border-radius:7px;color:{{ codeCopyColor }};font-size:12px;font-family:Inter,sans-serif;cursor:pointer" style-hover="border-color:#33333a;color:#FAFAFA">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V5a2 2 0 0 1 2-2h10"></path></svg>{{ codeCopyLabel }}
+          </button>
+        </div>
+        <sc-if value="{{ codeOpen }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;background:#09090A;max-height:320px;overflow:auto">
+            <div style="flex-shrink:0;padding:14px 0;text-align:right;user-select:none">
+              <sc-for list="{{ codeLines }}" as="cl" hint-placeholder-count="12">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.7;color:#3f3f46;padding:0 14px">{{ cl.n }}</div>
+              </sc-for>
+            </div>
+            <pre style="margin:0;flex:1;padding:14px 16px 14px 0;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.7;color:#D4D4D8;overflow-x:auto"><code ref="{{ codeRef }}"></code></pre>
+          </div>
+        </sc-if>
+      </div>
+
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;$preview&quot;: { &quot;width&quot;: 1320, &quot;height&quot;: 920 },
+  &quot;defaultTab&quot;: { &quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;logs&quot;, &quot;attempts&quot;], &quot;default&quot;: &quot;logs&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Job Detail&quot; }
+}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.logSearchRef = React.createRef();
+    this.codeRef = React.createRef();
+    this.state = {
+      tab: 'logs', copied: false, logFilter: '', autoScroll: true,
+      openAttempt: null, codeOpen: true, logCopied: false, codeCopied: false
+    };
+  }
+
+  CODE = [
+    'import durabl',
+    'import requests',
+    '',
+    '@durabl.job(runtime="python3.12", retries=3)',
+    'def sync_external_orders(payload):',
+    '    """Pull orders from the partner API and upsert them."""',
+    '    resp = requests.get(',
+    '        f"https://partner.example.com/orders/{payload[\'since\']}",',
+    '        timeout=30,',
+    '    )',
+    '    resp.raise_for_status()',
+    '    orders = resp.json()["orders"]',
+    '',
+    '    for order in orders:',
+    '        durabl.store.upsert("orders", order["id"], order)',
+    '',
+    '    return {"synced": len(orders)}'
+  ];
+
+  LOGS = [
+    { ts: '14:23:01.004', stream: 'stdout', text: 'Booting python3.12 sandbox (worker_3)' },
+    { ts: '14:23:01.182', stream: 'stdout', text: 'Installing deps: requests==2.32.3' },
+    { ts: '14:23:02.411', stream: 'stdout', text: 'Starting sync_external_orders(since=2026-10-04)' },
+    { ts: '14:23:02.418', stream: 'stdout', text: 'GET https://partner.example.com/orders/2026-10-04' },
+    { ts: '14:23:12.420', stream: 'stderr', text: 'WARNING urllib3: Retrying (Retry(total=2)) after connection broken' },
+    { ts: '14:23:22.425', stream: 'stderr', text: 'WARNING urllib3: Retrying (Retry(total=1)) after connection broken' },
+    { ts: '14:23:32.431', stream: 'stderr', text: 'WARNING urllib3: Retrying (Retry(total=0)) after connection broken' },
+    { ts: '14:23:32.902', stream: 'stderr', text: 'Traceback (most recent call last):' },
+    { ts: '14:23:32.902', stream: 'stderr', text: '  File "job.py", line 9, in sync_external_orders' },
+    { ts: '14:23:32.903', stream: 'stderr', text: '    resp = requests.get(url, timeout=30)' },
+    { ts: '14:23:32.903', stream: 'stderr', text: 'requests.exceptions.ConnectTimeout: HTTPSConnectionPool(' },
+    { ts: '14:23:32.903', stream: 'stderr', text: "  host='partner.example.com', port=443): Read timed out. (timeout=30)" },
+    { ts: '14:23:32.911', stream: 'stdout', text: 'Attempt 3/3 failed with exit code 1' },
+    { ts: '14:23:32.915', stream: 'stderr', text: 'All retries exhausted — marking job as failed' },
+    { ts: '14:23:33.002', stream: 'stdout', text: 'Moved to dead letter queue (dlq_id=dlq_7781)' }
+  ];
+
+  ATTEMPTS = [
+    { num: 1, worker: 'worker_1', started: '14:23:02.411', duration: '10.0s', exit: '1', error: 'requests.exceptions.ConnectTimeout: HTTPSConnectionPool(\n  host=\'partner.example.com\', port=443): Read timed out. (timeout=30)\n  at sync_external_orders (job.py:9)' },
+    { num: 2, worker: 'worker_2', started: '14:23:12.420', duration: '10.0s', exit: '1', error: 'requests.exceptions.ConnectTimeout: HTTPSConnectionPool(\n  host=\'partner.example.com\', port=443): Read timed out. (timeout=30)\n  Backoff: waited 10s before retry.' },
+    { num: 3, worker: 'worker_3', started: '14:23:22.425', duration: '10.0s', exit: '1', error: 'requests.exceptions.ConnectTimeout: HTTPSConnectionPool(\n  host=\'partner.example.com\', port=443): Read timed out. (timeout=30)\n  Final attempt — moved to DLQ (dlq_7781).' }
+  ];
+
+  componentDidMount() { this.paintCode(); }
+  componentDidUpdate() { this.paintCode(); }
+
+  paintCode() {
+    const el = this.codeRef.current; if (!el || !this.state.codeOpen) return;
+    const kw = ['import','def','for','in','return','from','as','class','if','else','with','try','except','raise','True','False','None','and','or','not'];
+    const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const html = this.CODE.map(line => {
+      let out = esc(line);
+      out = out.replace(/(#.*)$/g, '<span style="color:#52525B">$1</span>');
+      out = out.replace(/(&quot;[^&]*&quot;|&#39;[^&]*&#39;|"[^"]*"|'[^']*')/g, '<span style="color:#A5D6A5">$1</span>');
+      out = out.replace(/(@[a-zA-Z_][\w.]*)/g, '<span style="color:#EAB308">$1</span>');
+      out = out.replace(new RegExp('\\b(' + kw.join('|') + ')\\b', 'g'), '<span style="color:#C792EA">$1</span>');
+      return out || '&nbsp;';
+    }).join('\n');
+    el.innerHTML = html;
+  }
+
+  copyIdFn = () => { try { navigator.clipboard && navigator.clipboard.writeText('job_a3f81b2c4d9e21'); } catch(e){} this.flash('copied'); };
+  copyLogsFn = () => { try { navigator.clipboard && navigator.clipboard.writeText(this.LOGS.map(l => l.ts + ' ' + l.stream + ' ' + l.text).join('\n')); } catch(e){} this.flash('logCopied'); };
+  copyCodeFn = (e) => { if (e) e.stopPropagation(); try { navigator.clipboard && navigator.clipboard.writeText(this.CODE.join('\n')); } catch(x){} this.flash('codeCopied'); };
+  flash = (k) => { this.setState({ [k]: true }); clearTimeout(this['_t_'+k]); this['_t_'+k] = setTimeout(() => this.setState({ [k]: false }), 1200); };
+
+  renderVals() {
+    const tab = this.state.tab;
+    const ic = (a) => a ? '#8B5CF6' : '#71717A';
+    const mk = (name, d, o = {}) => ({ name, d, badge: o.badge || '', bg: o.active ? '#18181b' : 'transparent', color: o.active ? '#FAFAFA' : '#A1A1AA', dot: o.active ? '#8B5CF6' : 'transparent', iconColor: ic(o.active) });
+    const navSections = [
+      { title: 'OVERVIEW', items: [ mk('Dashboard','M4 4h7v7H4zM13 4h7v4h-7zM13 11h7v9h-7zM4 14h7v6H4z'), mk('Jobs','M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01', { active: true }), mk('Executions','M4 12h4l2 6 4-15 2 9h4') ] },
+      { title: 'RELIABILITY', items: [ mk('Dead Letter Queue','M12 3 2 20h20zM12 10v4M12 17h.01', { badge: '23' }), mk('Webhooks','M13 3 4 14h7l-1 7 9-11h-7z') ] },
+      { title: 'INSIGHTS', items: [ mk('Analytics','M4 4v16h16M8 16V11M13 16V7M18 16v-5'), mk('Usage','M12 3a9 9 0 1 0 9 9h-9z') ] },
+      { title: 'SETTINGS', items: [ mk('API Keys','M10 14a5 5 0 1 1 5-5l6 6-2 2-2-2-2 2-2-2z'), mk('Billing','M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM3 11h18'), mk('Settings','M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1') ] }
+    ];
+
+    const meta = [
+      { k: 'Runtime', v: 'Python 3.12', color: '#D4D4D8', font: 'Inter,sans-serif' },
+      { k: 'Priority', v: 'Normal', color: '#D4D4D8', font: 'Inter,sans-serif' },
+      { k: 'Attempts', v: '3/3', color: '#EF4444', font: "'JetBrains Mono',monospace" },
+      { k: 'Idempotency Key', v: 'idem_7f3a9c2e41', color: '#A1A1AA', font: "'JetBrains Mono',monospace" },
+      { k: 'Created', v: '2026-10-04 14:23:01', color: '#A1A1AA', font: "'JetBrains Mono',monospace" },
+      { k: 'Duration', v: '31.9s', color: '#A1A1AA', font: "'JetBrains Mono',monospace" },
+      { k: 'Worker', v: 'worker_3', color: '#A1A1AA', font: "'JetBrains Mono',monospace" },
+      { k: 'DLQ ID', v: 'dlq_7781', color: '#A1A1AA', font: "'JetBrains Mono',monospace" }
+    ];
+
+    const C = { green: '#22C55E', blue: '#3B82F6', red: '#EF4444', muted: '#3f3f46' };
+    const step = (label, time, gap, kind, d, first) => {
+      const col = kind === 'fail' ? C.red : kind === 'active' ? C.blue : kind === 'done' ? C.green : C.muted;
+      return {
+        label, time, gap, d,
+        dotBg: kind === 'fail' ? 'rgba(239,68,68,.14)' : kind === 'done' ? 'rgba(34,197,94,.13)' : kind === 'active' ? 'rgba(59,130,246,.14)' : '#1a1a1d',
+        dotBorder: col, iconColor: col, labelColor: '#E4E4E7',
+        lineColor: C.green, lineShow: first ? '0' : '1', gapColor: '#52525B'
+      };
+    };
+    const steps = [
+      step('Submitted', '14:23:01', 'start', 'done', 'M5 12l5 5 9-11', true),
+      step('Queued', '14:23:01', '+0.4s', 'done', 'M5 12l5 5 9-11'),
+      step('Running', '14:23:02', '+1.0s', 'done', 'M5 12l5 5 9-11'),
+      step('Failed', '14:23:32', '+30.5s', 'fail', 'M18 6 6 18M6 6l12 12'),
+      step('Moved to DLQ', '14:23:33', '+0.1s', 'fail', 'M12 3 2 20h20zM12 10v4M12 17h.01')
+    ];
+
+    const q = this.state.logFilter.trim().toLowerCase();
+    const logsAll = this.LOGS.filter(l => !q || l.text.toLowerCase().includes(q) || l.stream.includes(q));
+    const logs = logsAll.map((l, i) => ({
+      n: this.LOGS.indexOf(l) + 1, ts: l.ts, stream: l.stream,
+      streamColor: l.stream === 'stderr' ? '#EF4444' : '#71717A',
+      textColor: l.stream === 'stderr' ? '#FCA5A5' : '#D4D4D8', text: l.text
+    }));
+
+    const attempts = this.ATTEMPTS.map(a => ({
+      num: a.num, worker: a.worker, started: a.started, duration: a.duration, exit: a.exit, error: a.error,
+      open: this.state.openAttempt === a.num, caret: this.state.openAttempt === a.num ? '90deg' : '0deg',
+      toggle: () => this.setState(s => ({ openAttempt: s.openAttempt === a.num ? null : a.num }))
+    }));
+
+    const tabs = [
+      { key: 'logs', label: 'Logs', count: '', on: () => this.setState({ tab: 'logs' }),
+        color: tab === 'logs' ? '#FAFAFA' : '#71717A', underline: tab === 'logs' ? '#8B5CF6' : 'transparent', badgeBg: '', badgeColor: '' },
+      { key: 'attempts', label: 'Attempts', count: '3', on: () => this.setState({ tab: 'attempts' }),
+        color: tab === 'attempts' ? '#FAFAFA' : '#71717A', underline: tab === 'attempts' ? '#8B5CF6' : 'transparent',
+        badgeBg: 'rgba(239,68,68,.14)', badgeColor: '#EF4444' }
+    ];
+
+    return {
+      navSections, meta, steps, tabs,
+      copyId: this.copyIdFn, copied: this.state.copied, notCopied: !this.state.copied,
+      copyColor: this.state.copied ? '#22C55E' : '#71717A',
+      showLogs: tab === 'logs', showAttempts: tab === 'attempts',
+      logSearchRef: this.logSearchRef, logFilter: this.state.logFilter,
+      onLogFilter: (e) => this.setState({ logFilter: e.target.value }),
+      logs, logsEmpty: logs.length === 0,
+      toggleScroll: () => this.setState(s => ({ autoScroll: !s.autoScroll })),
+      scrollTrack: this.state.autoScroll ? '#8B5CF6' : '#2a2a30',
+      scrollKnob: this.state.autoScroll ? '15px' : '2px',
+      copyLogs: this.copyLogsFn, logCopyColor: this.state.logCopied ? '#22C55E' : '#A1A1AA', logCopyLabel: this.state.logCopied ? 'Copied' : 'Copy',
+      attempts,
+      toggleCode: () => this.setState(s => ({ codeOpen: !s.codeOpen })),
+      codeOpen: this.state.codeOpen, codeCaret: this.state.codeOpen ? '90deg' : '0deg',
+      codeBorder: this.state.codeOpen ? '#1E1E22' : 'transparent',
+      codeRef: this.codeRef, codeLines: this.CODE.map((_, i) => ({ n: i + 1 })),
+      copyCode: this.copyCodeFn, codeCopyColor: this.state.codeCopied ? '#22C55E' : '#A1A1AA', codeCopyLabel: this.state.codeCopied ? 'Copied' : 'Copy'
+    };
+  }
+}
+</script>
+</body>
+</html>

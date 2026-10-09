@@ -1,0 +1,70 @@
+# =============================================================================
+# Durabl backend — image ichiga TUSHMAYDIGAN fayllar
+# Maqsad: image hajmini kichik tutish va sirlarni (maxfiy ma'lumot) qo'shmaslik
+# =============================================================================
+
+# --- Muhit va sirlar (HECH QACHON image ichiga tushmasin) ---
+.env
+.env.*
+!.env.example
+
+# --- Python keshlari va artefaktlari ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# --- Virtual muhitlar (image o'z venv'ini yasaydi) ---
+.venv/
+venv/
+env/
+ENV/
+
+# --- Test va sifat nazorati keshlari ---
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.hypothesis/
+.tox/
+.nox/
+
+# --- Testlar (production image'da kerak emas) ---
+tests/
+
+# --- IDE va OS ---
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# --- Git va CI ---
+.git/
+.gitignore
+.github/
+
+# --- Loglar va lokal bazalar ---
+*.log
+logs/
+*.db
+*.sqlite
+*.sqlite3
+
+# --- Docker fayllari o'zi (konteksga shart emas) ---
+Dockerfile
+Dockerfile.*
+.dockerignore
+docker-compose*.yml
+
+# --- Hujjatlar ---
+README.md
+*.md

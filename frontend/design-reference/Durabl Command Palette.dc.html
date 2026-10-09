@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #0A0A0B; }
+  ::-webkit-scrollbar { width: 8px; }
+  ::-webkit-scrollbar-thumb { background: #2a2a30; border-radius: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  @keyframes dolay { from{opacity:0} to{opacity:1} }
+  @keyframes dpop { from{opacity:0;transform:translateY(-8px) scale(.98)} to{opacity:1;transform:translateY(0) scale(1)} }
+  input.dcp-input { flex:1;min-width:0;background:transparent;border:none;outline:none;color:#FAFAFA;font-family:Inter,sans-serif;font-size:16px; }
+  input.dcp-input::placeholder { color:#52525B; }
+</style>
+</helmet>
+<div ref="{{ rootRef }}" tabindex="0" style="position:relative;width:100%;height:100vh;overflow:hidden;font-family:Inter,sans-serif;outline:none;background:#0A0A0B" onKeyDown="{{ onKey }}">
+
+  <div style="position:absolute;inset:0;background:#0A0A0B;background-image:radial-gradient(circle at 1px 1px, #161619 1px, transparent 0);background-size:22px 22px">
+    <div style="position:absolute;top:20px;left:24px;display:flex;align-items:center;gap:9px">
+      <div style="width:24px;height:24px;border-radius:6px;background:#8B5CF6;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:#fff">D</div>
+      <span style="font-size:15px;font-weight:600;color:#FAFAFA;letter-spacing:-.01em">Durabl</span>
+    </div>
+    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:#2f2f35">
+      <div style="font-size:13px;color:#3f3f46">Press <span style="font-family:'JetBrains Mono',monospace;color:#71717A;border:1px solid #242428;border-radius:5px;padding:2px 7px;background:#141416">⌘K</span> to open the command palette</div>
+    </div>
+  </div>
+
+  <sc-if value="{{ open }}" hint-placeholder-val="{{ true }}">
+    <div onClick="{{ close }}" style="position:absolute;inset:0;z-index:40;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);display:flex;align-items:flex-start;justify-content:center;padding-top:14vh;animation:dolay .14s ease-out">
+      <div onClick="{{ stop }}" style="width:600px;max-width:calc(100% - 32px);background:#141416;border:1px solid #2a2a30;border-radius:14px;box-shadow:0 32px 80px rgba(0,0,0,.7);overflow:hidden;animation:dpop .16s cubic-bezier(.2,.8,.3,1)">
+
+        <div style="display:flex;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid #1E1E22">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#52525B" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M10 4a6 6 0 1 0 0 12 6 6 0 0 0 0-12zM20 20l-4.3-4.3"></path></svg>
+          <input ref="{{ inputRef }}" class="dcp-input" placeholder="Type a command or search…" value="{{ query }}" onChange="{{ onQuery }}" />
+          <span style="flex-shrink:0;font-family:'JetBrains Mono',monospace;font-size:11px;color:#52525B;border:1px solid #242428;border-radius:5px;padding:2px 7px;background:#0f0f10">ESC</span>
+        </div>
+
+        <div ref="{{ listRef }}" style="max-height:384px;overflow-y:auto;padding:8px">
+          <sc-for list="{{ groups }}" as="g" hint-placeholder-count="3">
+            <div style="margin-bottom:6px">
+              <div style="padding:8px 10px 6px;font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:#52525B">{{ g.title }}</div>
+              <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="4">
+                <div data-cp-item="{{ it.idx }}" onClick="{{ it.on }}" onMouseMove="{{ it.hover }}" style="display:flex;align-items:center;gap:12px;padding:9px 10px;border-radius:8px;cursor:pointer;background:{{ it.bg }}">
+                  <sc-if value="{{ it.statusDot }}" hint-placeholder-val="">
+                    <span style="flex-shrink:0;width:18px;display:flex;justify-content:center"><span style="width:8px;height:8px;border-radius:50%;background:{{ it.statusDot }}"></span></span>
+                  </sc-if>
+                  <sc-if value="{{ it.showIcon }}" hint-placeholder-val="{{ true }}">
+                    <span style="flex-shrink:0;width:18px;display:flex;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{{ it.iconColor }}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="{{ it.d }}"></path></svg></span>
+                  </sc-if>
+                  <span style="flex:1;font-size:14px;color:{{ it.labelColor }};font-family:{{ it.labelFont }};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ it.label }}</span>
+                  <sc-if value="{{ it.hint }}" hint-placeholder-val="">
+                    <span style="flex-shrink:0;font-family:'JetBrains Mono',monospace;font-size:11px;color:{{ it.hintColor }};border:1px solid {{ it.hintBorder }};border-radius:5px;padding:2px 7px;background:{{ it.hintBg }}">{{ it.hint }}</span>
+                  </sc-if>
+                  <sc-if value="{{ it.selected }}" hint-placeholder-val="">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </sc-for>
+          <sc-if value="{{ empty }}" hint-placeholder-val="">
+            <div style="padding:40px 16px;text-align:center;color:#52525B;font-size:14px">No results for "<span style="color:#A1A1AA">{{ query }}</span>"</div>
+          </sc-if>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:16px;padding:10px 16px;border-top:1px solid #1E1E22;background:#101012">
+          <span style="display:flex;align-items:center;gap:6px;font-size:11px;color:#52525B"><span style="font-family:'JetBrains Mono',monospace;color:#71717A;border:1px solid #242428;border-radius:4px;padding:1px 5px">↑</span><span style="font-family:'JetBrains Mono',monospace;color:#71717A;border:1px solid #242428;border-radius:4px;padding:1px 5px">↓</span>navigate</span>
+          <span style="display:flex;align-items:center;gap:6px;font-size:11px;color:#52525B"><span style="font-family:'JetBrains Mono',monospace;color:#71717A;border:1px solid #242428;border-radius:4px;padding:1px 5px">↵</span>select</span>
+          <span style="display:flex;align-items:center;gap:6px;font-size:11px;color:#52525B"><span style="font-family:'JetBrains Mono',monospace;color:#71717A;border:1px solid #242428;border-radius:4px;padding:1px 5px">esc</span>close</span>
+          <span style="margin-left:auto;display:flex;align-items:center;gap:7px;font-size:11px;color:#52525B"><div style="width:14px;height:14px;border-radius:4px;background:#8B5CF6;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff">D</div>Durabl</span>
+        </div>
+
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ closedHint }}" hint-placeholder-val="">
+    <div style="position:absolute;bottom:22px;left:50%;transform:translateX(-50%);z-index:30;display:flex;align-items:center;gap:10px;padding:8px 14px;background:#141416;border:1px solid #242428;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.5)">
+      <span style="font-size:12px;color:#A1A1AA">Palette closed</span>
+      <button onClick="{{ reopen }}" style="display:flex;align-items:center;gap:7px;padding:5px 10px;background:#8B5CF6;border:none;border-radius:7px;color:#fff;font-size:12px;font-weight:500;font-family:Inter,sans-serif;cursor:pointer" style-hover="background:#7C4DF0">Reopen <span style="font-family:'JetBrains Mono',monospace;font-size:10px;background:rgba(255,255,255,.2);border-radius:4px;padding:1px 5px">⌘K</span></button>
+    </div>
+  </sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;$preview&quot;: { &quot;width&quot;: 1100, &quot;height&quot;: 720 },
+  &quot;startOpen&quot;: { &quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Palette&quot; }
+}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.rootRef = React.createRef();
+    this.inputRef = React.createRef();
+    this.listRef = React.createRef();
+    this.state = { open: props.startOpen !== false, query: '', active: 0, closedOnce: false };
+  }
+
+  RAW = [
+    { group: 'Navigation', icon: 'M4 4h7v7H4zM13 4h7v4h-7zM13 11h7v9h-7zM4 14h7v6H4z', label: 'Go to Dashboard', hint: '⌘1' },
+    { group: 'Navigation', icon: 'M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01', label: 'Go to Jobs', hint: '⌘2' },
+    { group: 'Navigation', icon: 'M12 3 2 20h20zM12 10v4M12 17h.01', label: 'Go to Dead Letter Queue', hint: '⌘3' },
+    { group: 'Navigation', icon: 'M4 4v16h16M8 16V11M13 16V7M18 16v-5', label: 'Go to Analytics', hint: '⌘4' },
+    { group: 'Actions', icon: 'M12 5v14M5 12h14', label: 'Create new job', hint: '⌘N', accent: true },
+    { group: 'Actions', icon: 'M10 14a5 5 0 1 1 5-5l6 6-2 2-2-2-2 2-2-2z', label: 'Create API key' },
+    { group: 'Actions', icon: 'M3 12a9 9 0 1 0 3-6.7M3 3v4h4', label: 'Retry all failed jobs' },
+    { group: 'Recent Jobs', dot: '#EF4444', mono: true, label: 'job_a3f8…e21', sub: 'Failed' },
+    { group: 'Recent Jobs', dot: '#22C55E', mono: true, label: 'job_b21c…44f', sub: 'Success' },
+    { group: 'Recent Jobs', dot: '#3B82F6', mono: true, label: 'job_7f3a…9c2', sub: 'Running' }
+  ];
+
+  componentDidMount() {
+    this._key = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); this.openPalette(); }
+    };
+    window.addEventListener('keydown', this._key);
+    if (this.state.open) setTimeout(() => this.inputRef.current && this.inputRef.current.focus(), 60);
+  }
+  componentWillUnmount() { window.removeEventListener('keydown', this._key); }
+
+  flat() {
+    const q = this.state.query.trim().toLowerCase();
+    return this.RAW.filter(r => !q || r.label.toLowerCase().includes(q) || (r.sub || '').toLowerCase().includes(q));
+  }
+
+  openPalette = () => this.setState({ open: true, closedOnce: false, query: '', active: 0 }, () => setTimeout(() => this.inputRef.current && this.inputRef.current.focus(), 40));
+  close = () => this.setState({ open: false, closedOnce: true }, () => setTimeout(() => this.rootRef.current && this.rootRef.current.focus(), 30));
+
+  onQuery = (e) => this.setState({ query: e.target.value, active: 0 });
+
+  scrollActive() {
+    setTimeout(() => {
+      const list = this.listRef.current; if (!list) return;
+      const el = list.querySelector('[data-cp-item="' + this.state.active + '"]');
+      if (el) { const r = el.getBoundingClientRect(), lr = list.getBoundingClientRect();
+        if (r.bottom > lr.bottom) list.scrollTop += r.bottom - lr.bottom + 8;
+        else if (r.top < lr.top) list.scrollTop -= lr.top - r.top + 8;
+      }
+    }, 0);
+  }
+
+  onKey = (e) => {
+    if (!this.state.open) { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); this.openPalette(); } return; }
+    const list = this.flat();
+    if (e.key === 'ArrowDown') { e.preventDefault(); this.setState(s => ({ active: Math.min(list.length - 1, s.active + 1) }), () => this.scrollActive()); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); this.setState(s => ({ active: Math.max(0, s.active - 1) }), () => this.scrollActive()); }
+    else if (e.key === 'Enter') { e.preventDefault(); if (list[this.state.active]) this.close(); }
+    else if (e.key === 'Escape') { e.preventDefault(); this.close(); }
+  };
+
+  renderVals() {
+    const list = this.flat();
+    const active = Math.min(this.state.active, Math.max(0, list.length - 1));
+    const order = ['Navigation', 'Actions', 'Recent Jobs'];
+    const groups = order.map(g => {
+      const items = list.map((r, i) => ({ r, idx: i })).filter(x => x.r.group === g).map(({ r, idx }) => {
+        const sel = idx === active;
+        return {
+          idx, label: r.label, selected: sel,
+          bg: sel ? 'rgba(139,92,246,.14)' : 'transparent',
+          labelColor: sel ? '#FAFAFA' : (r.accent ? '#C4B5FD' : '#D4D4D8'),
+          labelFont: r.mono ? "'JetBrains Mono',monospace" : 'Inter,sans-serif',
+          showIcon: !r.dot, d: r.icon || '', iconColor: sel ? '#A78BFA' : (r.accent ? '#8B5CF6' : '#71717A'),
+          statusDot: r.dot || '',
+          hint: r.hint || (r.sub || ''),
+          hintColor: r.sub ? (r.dot) : '#A1A1AA',
+          hintBorder: r.sub ? 'transparent' : '#242428',
+          hintBg: r.sub ? 'transparent' : '#0f0f10',
+          on: () => this.close(),
+          hover: () => { if (this.state.active !== idx) this.setState({ active: idx }); }
+        };
+      });
+      return { title: g, items };
+    }).filter(g => g.items.length);
+
+    return {
+      rootRef: this.rootRef, inputRef: this.inputRef, listRef: this.listRef,
+      onKey: this.onKey, open: this.state.open, close: this.close, stop: (e) => e.stopPropagation(),
+      query: this.state.query, onQuery: this.onQuery, groups, empty: list.length === 0,
+      closedHint: this.state.closedOnce && !this.state.open, reopen: this.openPalette
+    };
+  }
+}
+</script>
+</body>
+</html>

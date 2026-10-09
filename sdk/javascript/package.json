@@ -1,0 +1,52 @@
+{
+  "name": "durabl",
+  "version": "1.0.0",
+  "description": "Durabl rasmiy JavaScript/TypeScript SDK — ishonchli background job va kod bajarish platformasi",
+  "license": "MIT",
+  "author": "Durabl",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/cjs/index.js",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "durabl",
+    "jobs",
+    "queue",
+    "background-jobs",
+    "sandbox",
+    "webhooks",
+    "idempotency",
+    "sdk"
+  ],
+  "scripts": {
+    "build": "npm run clean && tsc -p tsconfig.build.json && tsc -p tsconfig.build.json --module commonjs --moduleResolution node10 --outDir dist/cjs --declaration false --declarationMap false && node -e \"require('node:fs').writeFileSync('dist/cjs/package.json', '{\\\"type\\\":\\\"commonjs\\\"}')\"",
+    "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run typecheck && npm run test && npm run build"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.6.0",
+    "vitest": "^3.0.0"
+  }
+}

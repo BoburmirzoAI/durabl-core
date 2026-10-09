@@ -1,0 +1,17 @@
+-r requirements.txt
+
+# --- Test ---
+pytest>=8.3.0
+pytest-asyncio>=0.25.0
+pytest-cov>=6.0.0
+aiosqlite>=0.20.0
+# [lua] qo'shimchasi — `lupa` orqali Redis Lua skriptlarini bajaradi.
+# Busiz `queue_service`/`reliability_service` testda zaxira (atomar bo'lmagan)
+# yo'lga tushib ketadi va Lua kodi SINALMAY qoladi.
+fakeredis[lua]>=2.26.0
+respx>=0.22.0
+freezegun>=1.5.0
+
+# --- Sifat ---
+ruff>=0.8.0
+mypy>=1.14.0

@@ -1,0 +1,188 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/**
+ * Durabl dizayn tokenlari.
+ *
+ * Qiymatlar `design-reference/*.dc.html` dagi aniq hex ranglardan olingan va
+ * HSL'ga o'girilgan (Tailwind `hsl(var(--x) / alpha)` bilan shaffoflik bera
+ * olishi uchun). Komponentlarda xom hex YOZILMAYDI.
+ *
+ * MATN KONTRASTI uchun chetlanish: dizayndagi `--fg-dim`, `--fg-faint`,
+ * `--fg-ghost` va `--accent` qiymatlari WCAG AA (4.5:1) dan past edi —
+ * eng qattiq fon hover qilingan jadval qatori `--surface-3` (#18181B).
+ * Ohang va to'yinganlik saqlanib, faqat yorqinlik ko'tarildi. Aksent esa
+ * ikki rolga ajratildi: `--accent` (matn/chegara) va `--accent-solid`
+ * (oq matn ko'taradigan to'ldirish) — bitta qiymat ikkisini birga
+ * qanoatlantira olmaydi.
+ *
+ * Durabl faqat qorong'u mavzuda ishlaydi, shuning uchun `:root` ning o'zi
+ * qorong'u. `data-theme="light"` kelajakda qo'shilishi mumkin — shuning uchun
+ * tokenlar baribir ajratilgan.
+ */
+:root {
+    --canvas: 240 4.8% 4.1%; /* #0A0A0B — sahifa foni */
+    --canvas-deep: 240 5.3% 3.7%; /* #09090A — log/kod foni */
+    --canvas-sunken: 240 3.7% 5.3%; /* #0D0D0E — ochilgan qator */
+    --canvas-raised: 240 3.2% 6.1%; /* #0F0F10 — kbd, input */
+    --surface: 240 4.8% 8.2%; /* #141416 — kartalar, jadvallar */
+    --surface-2: 240 6.4% 9.2%; /* #161619 — menyu, hover */
+    --surface-3: 240 5.9% 10.0%; /* #18181B — qator hover */
+    --surface-4: 240 6.7% 11.8%; /* #1C1C20 — tooltip, grid chizigi */
+    --surface-5: 240 7.5% 13.1%; /* #1F1F24 — menyu element hover */
+    --line-subtle: 240 6.4% 9.2%; /* #161619 — yengil ajratgich */
+    --line-inner: 240 6.2% 12.5%; /* #1E1E22 — karta ichidagi ajratgich */
+    --line: 240 5.3% 14.9%; /* #242428 — standart chegara */
+    --line-strong: 240 6.7% 17.6%; /* #2A2A30 — menyu chegarasi */
+    --line-hover: 240 6.4% 21.4%; /* #33333A — hover chegarasi */
+    --fg: 0 0.0% 98.0%; /* #FAFAFA — asosiy matn */
+    --fg-bright: 240 5.9% 90.0%; /* #E4E4E7 — mono ID */
+    --fg-soft: 240 4.9% 83.9%; /* #D4D4D8 — tugma matni */
+    --fg-muted: 240 5.0% 64.9%; /* #A1A1AA — ikkilamchi */
+    --fg-dim: 240 3.8% 58.5%; /* #919199 — uchlamchi (dizaynda #71717A, 3.8:1) */
+    --fg-faint: 240 5.2% 53.0%; /* #81818D — yorliq, placeholder (dizaynda #52525B, 2.4:1) */
+    --fg-ghost: 240 5.3% 42.0%; /* #656570 — qator raqami, o'chirilgan holat (dizaynda #3F3F46) */
+    --accent: 258 89.5% 68.5%; /* #9166F7 — aksent matn, chegara, grafik (dizaynda #8B5CF6, 4.3:1) */
+    --accent-solid: 258 89.5% 61.0%; /* #7843F5 — OQ matn ko'taradigan to'ldirish */
+    --accent-hover: 258 89.5% 56.5%; /* #682DF3 — to'ldirilgan tugma hover */
+    --accent-light: 255 91.7% 76.3%; /* #A78BFA — havola hover */
+    --accent-pale: 252 94.7% 85.1%; /* #C4B5FD — bulk panel matni */
+    --accent-bar: 256 21.6% 10.0%; /* #17141F — bulk panel foni */
+    --accent-bar-2: 257 22.6% 12.2%; /* #1C1826 — bulk tugma */
+    --accent-bar-3: 256 27.5% 15.7%; /* #231D33 — bulk tugma hover */
+    --accent-edge: 258 25.5% 20.0%; /* #2E2640 — bulk chegara */
+    --accent-edge-2: 259 27.1% 25.3%; /* #3A2F52 — bulk chegara hover */
+    --success: 142 70.6% 45.3%; /* #22C55E — muvaffaqiyatli */
+    --running: 217 91.2% 59.8%; /* #3B82F6 — bajarilmoqda */
+    --failed: 0 84.2% 60.2%; /* #EF4444 — xato */
+    --pending: 45 93.4% 47.5%; /* #EAB308 — kutilmoqda */
+    --queued: 240 5.0% 64.9%; /* #A1A1AA — navbatda */
+    --failed-text: 0 93.5% 81.8%; /* #FCA5A5 — traceback matni */
+    --failed-bright: 0 96.3% 89.4%; /* #FECACA — alert sarlavhasi */
+
+    /* Jonli nuqta pulsatsiyasi uchun joriy rang (komponent o'zi almashtiradi) */
+    --pulse-color: var(--success);
+
+    /* shadcn/ui mosligi uchun taxalluslar */
+    --background: var(--canvas);
+    --foreground: var(--fg);
+    --card: var(--surface);
+    --card-foreground: var(--fg);
+    --popover: var(--surface-2);
+    --popover-foreground: var(--fg);
+    --primary: var(--accent);
+    --primary-foreground: 0 0% 100%;
+    --secondary: var(--surface-3);
+    --secondary-foreground: var(--fg-soft);
+    --muted: var(--surface-3);
+    --muted-foreground: var(--fg-muted);
+    --destructive: var(--failed);
+    --destructive-foreground: 0 0% 100%;
+    --border: var(--line);
+    --input: var(--line);
+    --ring: var(--accent);
+  }
+
+* {
+  box-sizing: border-box;
+  border-color: hsl(var(--line));
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: hsl(var(--canvas));
+  color: hsl(var(--fg));
+  font-family: var(--font-inter), Inter, system-ui, sans-serif;
+  /* Dizayn 13px bazaga qurilgan */
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  color: hsl(var(--accent));
+  text-decoration: none;
+}
+
+a:hover {
+  color: hsl(var(--accent-light));
+}
+
+/* --- Yupqa scrollbar (dizayndan) --- */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--line));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--line-hover));
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--line)) transparent;
+}
+
+/* --- Fokus ko'rinishi (klaviatura navigatsiyasi uchun muhim) --- */
+:focus-visible {
+  outline: 2px solid hsl(var(--accent));
+  outline-offset: 1px;
+}
+
+/* Sichqoncha bilan bosilganda halqa ko'rinmasin */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+@layer components {
+  /* Dizayndagi shaffof input (search, filter, log filter) */
+  .input-bare {
+    @apply min-w-0 flex-1 border-none bg-transparent p-0 text-sm text-fg outline-none;
+  }
+
+  .input-bare::placeholder {
+    @apply text-fg-faint;
+  }
+
+  /* Klaviatura yorlig'i nishoni */
+  .kbd {
+    @apply rounded-sm border border-line bg-canvas-raised px-1.5 py-px font-mono text-xs text-fg-muted;
+  }
+
+  /* Jadval sarlavha qatori */
+  .table-head {
+    @apply border-b border-line-inner px-3.5 py-2.5 text-2xs font-semibold uppercase tracking-[.06em] text-fg-faint;
+  }
+
+  /* Skeleton yuklanish bloki */
+  .skeleton {
+    @apply relative overflow-hidden rounded bg-surface-3;
+  }
+
+  .skeleton::after {
+    @apply absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-white/[0.04] to-transparent content-[''];
+  }
+}
+
+@layer utilities {
+  /* Raqamlarni bir xil kenglikda ko'rsatish (jadval ustunlari qalqimasligi uchun) */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}

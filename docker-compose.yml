@@ -1,0 +1,398 @@
+# =============================================================================
+# Durabl — lokal development uchun to'liq stek (docker compose)
+#
+# Ishga tushirish:
+#   cp .env.example .env            # bir marta
+#   docker compose up -d            # postgres + redis + api + worker'lar + frontend
+#   docker compose --profile monitoring up -d   # + Prometheus va Grafana
+#
+# Eslatma: `api` va `frontend` servislari kodni host'dan `volume` bilan oladi,
+# shuning uchun kod o'zgarsa qayta build qilish shart emas (hot reload).
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Umumiy bloklar (YAML anchor) — barcha backend servislari uchun takrorlanmaydi
+# -----------------------------------------------------------------------------
+
+#: Backend image uchun umumiy build konteksti (api — HTTP, worker — fon ishchilari)
+x-backend-build: &backend-build
+  context: ./backend
+  dockerfile: Dockerfile
+
+#: Barcha backend servislari uchun umumiy muhit o'zgaruvchilari.
+#  `env_file` — foydalanuvchining `.env` fayli (bo'lmasa ham ishlaydi),
+#  `environment` — konteyner ichidagi tarmoq nomlari (postgres/redis) bilan
+#  mos keladigan majburiy qiymatlar.
+x-backend-env: &backend-env
+  env_file:
+    - path: .env
+      required: false
+  environment:
+    # Konteyner ichida xost nomlari — `localhost` emas, servis nomlari
+    DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://durabl:durabl@postgres:5432/durabl}
+    REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+    ENV: ${ENV:-development}
+    LOG_FORMAT: ${LOG_FORMAT:-console}
+    LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    PYTHONPATH: /app
+
+    # --- Sandbox ---------------------------------------------------------
+    # DIQQAT: `SANDBOX_ENABLED` standart bo'yicha `false` (config.py), ya'ni
+    # worker kodni IZOLYATSIYASIZ subprocess sifatida bajaradi. Docker socket
+    # mount qilingan bo'lsa ham, bu o'zgaruvchisiz sandbox ISHLATILMAYDI.
+    SANDBOX_ENABLED: ${SANDBOX_ENABLED:-true}
+    # macOS/dev: `runc`. Linux production: `runsc` (gVisor) — README'ga qarang.
+    SANDBOX_RUNTIME: ${SANDBOX_RUNTIME:-runc}
+    # Worker konteyneri ichidagi yo'l (yuqoridagi volume mount bilan mos)
+    SANDBOX_SECCOMP_PROFILE: ${SANDBOX_SECCOMP_PROFILE:-/etc/durabl/seccomp-profile.json}
+    SANDBOX_IMAGE_PYTHON: ${SANDBOX_IMAGE_PYTHON:-durabl/runner-python:latest}
+    SANDBOX_IMAGE_NODE: ${SANDBOX_IMAGE_NODE:-durabl/runner-node:latest}
+    # `mkdtemp()` shu katalogda ishlaydi — yuqoridagi volume bilan bir xil yo'l
+    TMPDIR: ${PWD}/.durabl-sandbox
+
+#: Fon ishchilari (worker/scheduler/dlq/webhook) uchun umumiy sozlamalar.
+#  Docker socket — sandbox konteynerlarini yaratish uchun kerak.
+x-worker-common: &worker-common
+  build:
+    context: ./backend
+    dockerfile: Dockerfile.worker
+    args:
+      # Docker socket guruhining GID'i — non-root worker socket'ga kira olishi uchun.
+      # Linux: `DOCKER_GID=$(getent group docker | cut -d: -f3)` qiymatini .env'ga yozing.
+      DOCKER_GID: ${DOCKER_GID:-999}
+  restart: unless-stopped
+  #: Jarayon tirikligini tekshirish. Worker HTTP portini ochmaydi, shuning
+  #  uchun oddiy "protsess bormi" tekshiruvi — `pgrep` o'rniga Python,
+  #  chunki slim image'da procps yo'q.
+  healthcheck:
+    test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+    interval: 30s
+    timeout: 5s
+    retries: 3
+    start_period: 20s
+  #: Socket huquqi build vaqtiga bog'lanib qolmasligi uchun ishlash vaqtida ham qo'shamiz
+  group_add:
+    - "${DOCKER_GID:-999}"
+  volumes:
+    # Kod — hot reload uchun (worker qayta ishga tushganda yangi kodni oladi)
+    - ./backend:/app
+    # Docker socket — `sandbox_manager` gVisor/Docker konteyner yaratadi
+    - /var/run/docker.sock:/var/run/docker.sock
+    # ---------------------------------------------------------------------
+    # Sandbox ish katalogi — AYNI MUTLAQ YO'L host'da ham, worker ichida ham.
+    #
+    # NEGA SHART: `sandbox_manager` worker ichida `mkdtemp()` bilan katalog
+    # yasaydi va uni sandbox konteyneriga bind-mount qiladi. Lekin mount'ni
+    # Docker DEMONI bajaradi va yo'lni O'Z fayl tizimida (host'da) qidiradi.
+    # Agar yo'llar farq qilsa, sandbox konteyneri BO'SH `/sandbox` oladi:
+    # `main.py` yo'q -> entrypoint jim yiqiladi (exit 1, chiqishsiz).
+    #
+    # Shuning uchun host yo'li va konteyner yo'li BIR XIL bo'lishi kerak,
+    # `TMPDIR` esa shu katalogga ko'rsatiladi (quyida).
+    - ${PWD}/.durabl-sandbox:${PWD}/.durabl-sandbox
+    # Seccomp profili — worker uni O'QIB mazmunini Docker API'ga yuboradi
+    # (Docker CLI faylni o'zi o'qiydi, API esa JSON mazmunini kutadi).
+    # Shuning uchun fayl worker KONTEYNERI ichida mavjud bo'lishi shart.
+    - ./sandbox/gvisor/seccomp-profile.json:/etc/durabl/seccomp-profile.json:ro
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+    migrate:
+      condition: service_completed_successfully
+  networks:
+    - durabl
+
+# -----------------------------------------------------------------------------
+# Servislar
+# -----------------------------------------------------------------------------
+services:
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL — job'lar, bajarishlar, loglar (durability manbai)
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: durabl-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-durabl}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-durabl}
+      POSTGRES_DB: ${POSTGRES_DB:-durabl}
+      # Initdb uchun — o'zbekcha emas, texnik majburiy qiymat
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8"
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      # `pg_isready` — baza so'rov qabul qilishga tayyormi
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-durabl} -d $${POSTGRES_DB:-durabl} -q"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - durabl
+
+  # ---------------------------------------------------------------------------
+  # Redis — navbat, lease, idempotency, rate limit, pub/sub
+  # `appendonly yes` — Redis qulasa ham navbat yo'qolmaydi (durability)
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: durabl-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    networks:
+      - durabl
+
+  # ---------------------------------------------------------------------------
+  # Migratsiya — bir martalik servis: sxemani oxirgi holatga keltiradi
+  # Boshqa servislar `service_completed_successfully` orqali shuni kutadi.
+  # ---------------------------------------------------------------------------
+  migrate:
+    build: *backend-build
+    container_name: durabl-migrate
+    <<: *backend-env
+    command: ["alembic", "upgrade", "head"]
+    restart: "no"
+    volumes:
+      - ./backend:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - durabl
+
+  # ---------------------------------------------------------------------------
+  # API — FastAPI (HTTP + WebSocket). Development'da `--reload` yoqilgan.
+  # ---------------------------------------------------------------------------
+  api:
+    build: *backend-build
+    container_name: durabl-api
+    restart: unless-stopped
+    <<: *backend-env
+    command:
+      - uvicorn
+      - app.main:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --reload
+    ports:
+      - "${API_PORT:-8000}:8000"
+    volumes:
+      # Hot reload — host'dagi kod bevosita konteynerda
+      - ./backend:/app
+    healthcheck:
+      # `/health` endpointi — DB va Redis holatini qaytaradi
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request as u; u.urlopen('http://127.0.0.1:8000/health', timeout=3)
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - durabl
+
+  # ---------------------------------------------------------------------------
+  # Worker pool — navbatdan job oladi, sandbox'da bajaradi (Durabl yadrosi)
+  # ---------------------------------------------------------------------------
+  worker:
+    <<: [*worker-common, *backend-env]
+    container_name: durabl-worker
+    command: ["python", "-m", "app.workers.worker_pool"]
+
+  # ---------------------------------------------------------------------------
+  # Scheduler — kechiktirilgan/cron job'larni navbatga qo'yadi va
+  # muddati o'tgan lease'larni qayta tiklaydi (reaper)
+  # ---------------------------------------------------------------------------
+  scheduler:
+    <<: [*worker-common, *backend-env]
+    container_name: durabl-scheduler
+    command: ["python", "-m", "app.workers.scheduler"]
+
+  # ---------------------------------------------------------------------------
+  # DLQ processor — o'lik xatlar navbatini kuzatadi, alert yuboradi
+  # ---------------------------------------------------------------------------
+  dlq-processor:
+    <<: [*worker-common, *backend-env]
+    container_name: durabl-dlq-processor
+    command: ["python", "-m", "app.workers.dlq_processor"]
+
+  # ---------------------------------------------------------------------------
+  # Webhook sender — delivery navbatini yuboradi va retry rejalashtiradi
+  # ---------------------------------------------------------------------------
+  webhook-sender:
+    <<: [*worker-common, *backend-env]
+    container_name: durabl-webhook-sender
+    command: ["python", "-m", "app.workers.webhook_sender"]
+
+  # ---------------------------------------------------------------------------
+  # Frontend — Next.js dashboard (development rejimi, hot reload)
+  #
+  # HOZIRGI HOLAT: frontend to'liq MOCK ma'lumot bilan ishlaydi (`src/lib/mock/`).
+  # Backend'ga birorta so'rov yuborilmaydi, shuning uchun uni YOLG'IZ ko'tarish
+  # mumkin:  docker compose up -d frontend
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: dev
+    container_name: durabl-frontend
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      # Brauzer'dan ko'rinadigan manzil — konteyner nomi emas, `localhost`
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+      NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL:-ws://localhost:8000}
+      # Mock qatlamining sun'iy kechikishi (ms). 0 — darhol yuklanadi.
+      NEXT_PUBLIC_MOCK_LATENCY_MS: ${NEXT_PUBLIC_MOCK_LATENCY_MS:-200}
+      NEXT_TELEMETRY_DISABLED: "1"
+      WATCHPACK_POLLING: "true"
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    volumes:
+      - ./frontend:/app
+      # Anonim volume'lar — host'dagi node_modules/.next konteynerni buzmasligi uchun
+      - /app/node_modules
+      - /app/.next
+    healthcheck:
+      # Next.js dev serveri ko'tarilgach har qanday sahifa 200 qaytaradi
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/login').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    # `depends_on: api` ATAYLAB yo'q — mock rejimda frontend backend'ga
+    # bog'liq emas va yolg'iz ko'tarilishi kerak. Backend ulanadigan qadamda
+    # qaytariladi:
+    #   depends_on:
+    #     api:
+    #       condition: service_started
+    networks:
+      - durabl
+
+  # ---------------------------------------------------------------------------
+  # pgAdmin — baza UI (FAQAT development, `tools` profili bilan)
+  #
+  #   make pgadmin   ->  http://localhost:5050
+  #
+  # Profil ortida turadi, chunki kundalik ish uchun `make db-shell` tezroq
+  # va pgAdmin ~400MB xotira oladi.
+  # ---------------------------------------------------------------------------
+  pgadmin:
+    image: dpage/pgadmin4:8.12
+    container_name: durabl-pgadmin
+    profiles: ["tools"]
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@durabl.dev}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-durabl}
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+      PGADMIN_LISTEN_PORT: "80"
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - durabl
+
+  # ---------------------------------------------------------------------------
+  # Prometheus — metrikalarni yig'adi (faqat `monitoring` profili bilan)
+  # ---------------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: durabl-prometheus
+    restart: unless-stopped
+    profiles: ["monitoring"]
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+      - --web.enable-lifecycle
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - durabl
+
+  # ---------------------------------------------------------------------------
+  # Grafana — dashboard'lar (datasource va dashboard avtomatik yuklanadi)
+  # ---------------------------------------------------------------------------
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: durabl-grafana
+    restart: unless-stopped
+    profiles: ["monitoring"]
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/durabl-overview.json
+    ports:
+      - "${GRAFANA_PORT:-3001}:3000"
+    volumes:
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - durabl
+
+# -----------------------------------------------------------------------------
+# Nomlangan volume'lar — ma'lumot konteyner o'chsa ham saqlanadi
+# -----------------------------------------------------------------------------
+volumes:
+  postgres_data:
+    name: durabl_postgres_data
+  redis_data:
+    name: durabl_redis_data
+  prometheus_data:
+    name: durabl_prometheus_data
+  grafana_data:
+    name: durabl_grafana_data
+  pgadmin_data:
+    name: durabl_pgadmin_data
+
+# -----------------------------------------------------------------------------
+# Nomlangan tarmoq — barcha servislar bir-birini nomi bilan topadi
+# -----------------------------------------------------------------------------
+networks:
+  durabl:
+    name: durabl
+    driver: bridge
