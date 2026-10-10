@@ -6,11 +6,15 @@
 Kodingizni API orqali yuboring — Durabl uni izolyatsiyalangan sandbox ichida bajaradi,
 natijani webhook yoki polling orqali qaytaradi. Job yo'qolmaydi, ikki marta bajarilmaydi.
 
-<!-- Nishonlar (badge) uchun joy — CI sozlangandan keyin to'ldiriladi -->
-<!-- ![CI](https://img.shields.io/badge/ci-pending-lightgrey) -->
-<!-- ![Coverage](https://img.shields.io/badge/coverage-pending-lightgrey) -->
-<!-- ![License](https://img.shields.io/badge/license-MIT-blue) -->
-<!-- ![Python](https://img.shields.io/badge/python-3.12-blue) -->
+[![CI](https://github.com/BoburmirzoAI/durabl-core/actions/workflows/ci.yml/badge.svg)](https://github.com/BoburmirzoAI/durabl-core/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
+![Python](https://img.shields.io/badge/python-3.12-blue)
+![Node](https://img.shields.io/badge/node-20-blue)
+
+<!-- Qoplama badge'i ATAYLAB yo'q: u tashqi servis (Codecov) va token
+     talab qiladi. Qoplama hisoboti har CI ishida job xulosasida
+     ko'rinadi va artifact sifatida saqlanadi. -->
+
 
 [Hujjatlar](#hujjatlar) · [5 daqiqada ishga tushirish](#5-daqiqada-ishga-tushirish) ·
 [API](docs/API.md) · [Ishonchlilik](docs/RELIABILITY.md) · [Xavfsizlik](docs/SECURITY.md)
@@ -72,8 +76,8 @@ Talablar: **Docker 24+** va **Docker Compose v2**, `make`. Lokal ishlash uchun g
 (`SANDBOX_ENABLED=false` bo'lsa kod subprocess'da bajariladi).
 
 ```bash
-git clone https://github.com/durabl/durabl.git
-cd durabl
+git clone https://github.com/BoburmirzoAI/durabl-core.git
+cd durabl-core
 
 python3.12 -m venv .venv      # lokal testlar va lint uchun
 make install                  # bog'liqliklar + .env'ni .env.example'dan yaratadi

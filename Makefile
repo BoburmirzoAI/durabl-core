@@ -214,6 +214,14 @@ migrate-down: ## Migratsiyani orqaga qaytaradi (make migrate-down step=1)
 migrate-history: ## Migratsiyalar tarixi
 	$(COMPOSE) run --rm migrate alembic history --verbose
 
+# Nega bu alohida tekshiruv kerak: testlar sxemani MODELLARDAN yasaydi
+# (`create_all=True`), ya'ni migratsiya fayllariga tegmaydi. Model o'zgarib
+# migratsiya yozilmasa — barcha testlar o'tadi, lekin production'da
+# `alembic upgrade` dan keyin ilova yiqiladi. CI ham AYNI skriptni
+# chaqiradi (`.github/workflows/ci.yml`, `migrations` job).
+migrate-check: ## Migratsiya modellarga mos kelishini tekshiradi (drift)
+	$(COMPOSE) run --rm migrate python scripts/check_migration_drift.py
+
 db-shell: ## PostgreSQL konsoli (psql)
 	@$(MAKE) --no-print-directory .require-service s=$(SVC_DB)
 	$(COMPOSE) exec $(SVC_DB) psql -U $(POSTGRES_USER) -d $(POSTGRES_DB)
@@ -515,7 +523,7 @@ status: ## Hamma narsaning holati: servislar, baza, navbat, sandbox
 # =============================================================================
 .PHONY: help setup up up-logs up-monitoring up-tools down restart rebuild prod \
         clean clean-cache ps logs logs-service logs-api logs-worker logs-scheduler logs-webhook \
-        migrate makemigration migrate-down migrate-history db-shell db-reset db-backup \
+        migrate makemigration migrate-down migrate-history migrate-check db-shell db-reset db-backup \
         db-restore db-tables \
         createsuperuser createuser list-users seed seed-reset \
         sandbox-build sandbox-test gvisor-install \
