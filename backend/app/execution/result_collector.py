@@ -238,6 +238,7 @@ class ResultCollector:
             memory_peak_mb=outcome.memory_peak_mb,
             truncated=truncated,
             sandbox_id=outcome.sandbox_id,
+            response_status=outcome.response_status,
         )
 
     # ------------------------------------------------------------------

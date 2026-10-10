@@ -398,6 +398,10 @@ class HttpRunner:
                 error_type=None if ok else "HTTPStatusError",
             ),
             sandbox_id=f"http-{spec.job_id}-{spec.attempt_number}",
+            # Haqiqiy status kodi: muvaffaqiyatda `exit_code` 0 bo'lishi
+            # SHART (`ResultCollector` shunday talab qiladi), shuning
+            # uchun 200/201/204 farqi faqat shu maydonda saqlanadi.
+            response_status=response.status_code,
         )
 
     @staticmethod

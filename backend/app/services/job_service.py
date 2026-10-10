@@ -47,11 +47,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.constants import (
     FailureReason,
+    HttpMethod,
     JobKind,
     JobStatus,
     PlanType,
     Priority,
     RedisKeys,
+    Runtime,
     WebhookEvent,
     plan_limits,
 )
@@ -63,6 +65,7 @@ from app.exceptions import (
     JobNotCancellableError,
     JobNotFoundError,
     ResultNotReadyError,
+    ValidationError,
 )
 from app.execution.types import ResourceLimits
 from app.logging_config import get_logger
@@ -197,9 +200,36 @@ class JobService:
         await self._assert_concurrency(user, plan.max_concurrent_jobs)
 
         # --- 3. Validatsiya ------------------------------------------
-        runtime = validate_runtime(data.runtime)
-        validate_code_size(data.code)
-        assert_code_safe(data.code, runtime)
+        #
+        # Rejimga qarab ikki yo'l. Shaklga xos tekshiruvlar (maydon
+        # majburiyligi, URL SSRF'dan o'tishi) ALLAQACHON `JobCreate`
+        # sxemasida bajarilgan — mijoz 422 ni darhol oladi. Bu yerda
+        # faqat kodga xos, og'irroq tekshiruvlar qoladi.
+        kind = JobKind(data.kind)
+        if kind is JobKind.HTTP:
+            # HTTP job'da kod yo'q, ya'ni `runtime` ham ma'nosiz.
+            # Ustun `nullable=False` bo'lib qolgani uchun qiymat
+            # baribir kerak — `PYTHON` neytral standart sifatida
+            # yoziladi va HECH QAYERDA ishlatilmaydi (`HttpRuntime`
+            # xatoni o'zi tasniflaydi).
+            runtime = Runtime.PYTHON
+            code: str | None = None
+            http_method = HttpMethod(data.http_method) if data.http_method else HttpMethod.POST
+        else:
+            # `JobCreate` sxemasi `kind=code` uchun ikkisini ham MAJBUR
+            # qiladi, lekin `submit()` sxemani chetlab chaqirilishi
+            # mumkin (`model_construct`). Shuning uchun tekshiruv ochiq:
+            # jim `None` bilan davom etish o'rniga aniq xato.
+            if data.code is None or data.runtime is None:
+                raise ValidationError(
+                    "`kind=code` uchun `code` va `runtime` berilishi shart",
+                    details={"kind": kind.value},
+                )
+            runtime = validate_runtime(data.runtime)
+            code = data.code
+            validate_code_size(code)
+            assert_code_safe(code, runtime)
+            http_method = None
         validate_payload_size(data.payload)
         env_vars = validate_env_vars(data.env_vars) or None
         tags = validate_tags(data.tags) or None
@@ -220,7 +250,11 @@ class JobService:
         if key is not None:
             fingerprint = IdempotencyService.fingerprint(
                 self._fingerprint_source(
-                    code=data.code,
+                    kind=kind,
+                    code=code,
+                    target_url=data.target_url,
+                    http_method=http_method,
+                    http_headers=data.http_headers,
                     runtime=runtime,
                     priority=Priority(data.priority),
                     payload=data.payload,
@@ -249,7 +283,11 @@ class JobService:
             job = await self.jobs.create(
                 user_id=user.id,
                 idempotency_key=key,
-                code=data.code,
+                kind=kind,
+                code=code,
+                target_url=data.target_url,
+                http_method=http_method,
+                http_headers=data.http_headers,
                 runtime=runtime,
                 priority=Priority(data.priority),
                 status=JobStatus.PENDING,
@@ -366,6 +404,7 @@ class JobService:
         items, total = await self.jobs.search(
             user_id=user.id,
             status=filters.status,
+            kind=filters.kind,
             runtime=filters.runtime,
             priority=filters.priority,
             start=filters.start,
@@ -570,18 +609,35 @@ class JobService:
         """
         source = await self.get(user, job_id)
 
-        data = JobCreate(
-            code=source.code,
-            runtime=source.runtime,
-            priority=source.priority,
-            payload=source.payload,
-            env_vars=source.env_vars,
-            timeout_seconds=source.timeout_seconds,
-            max_retries=source.max_retries,
-            tags=source.tags,
-            memory_mb=source.memory_mb,
-            cpus=source.cpus,
-        )
+        # Rejimga qarab ikki xil shakl: `JobCreate` validatori
+        # `kind=code` da `code`+`runtime` ni, `kind=http` da `target_url` ni
+        # talab qiladi va boshqasining maydonlarini RAD ETADI. Shuning
+        # uchun bitta umumiy lug'at bilan yasash mumkin emas.
+        kind = JobKind(source.kind)
+        common: dict[str, Any] = {
+            "kind": kind,
+            "priority": source.priority,
+            "payload": source.payload,
+            "timeout_seconds": source.timeout_seconds,
+            "max_retries": source.max_retries,
+            "tags": source.tags,
+            "memory_mb": source.memory_mb,
+            "cpus": source.cpus,
+        }
+        if kind is JobKind.HTTP:
+            data = JobCreate(
+                target_url=source.target_url,
+                http_method=HttpMethod(source.http_method) if source.http_method else None,
+                http_headers=source.http_headers,
+                **common,
+            )
+        else:
+            data = JobCreate(
+                code=source.code,
+                runtime=source.runtime,
+                env_vars=source.env_vars,
+                **common,
+            )
         job, _ = await self.submit(user, data, idempotency_key=None)
         logger.info(
             "job qayta yuborildi",

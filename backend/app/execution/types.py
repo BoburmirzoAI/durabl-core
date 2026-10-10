@@ -222,6 +222,14 @@ class ExecutionResult:
     memory_peak_mb: int | None = None
     truncated: bool = False
     sandbox_id: str | None = None
+    #: `JobKind.HTTP` uchun javobning HTTP status kodi.
+    #:
+    #: Nega `exit_code` yetmaydi: `ResultCollector` muvaffaqiyatni
+    #: "`ok` VA `exit_code == 0`" deb aniqlaydi, ya'ni muvaffaqiyatli
+    #: HTTP job'da `exit_code` 0 bo'lishi SHART. Natijada 200 va 201
+    #: farqi yo'qolardi. Shu maydon aynan o'sha ma'lumotni saqlaydi.
+    #: `kind=CODE` uchun har doim `None`.
+    response_status: int | None = None
 
     @property
     def is_success(self) -> bool:
@@ -284,6 +292,8 @@ class ExecutionResult:
             "result": {"value": self.result} if self.result is not None else None,
             "error": self.error_message,
             "failure_reason": self.failure_reason,
+            # `kind=CODE` da `None` — ustun baribir `NULL` bo'lib qoladi.
+            "response_status": self.response_status,
         }
 
 
@@ -355,6 +365,9 @@ class RunnerOutcome:
     memory_peak_mb: int | None = None
     #: Runner darajasidagi infratuzilma xatosi (konteyner yaratilmadi va h.k.)
     infra_error: str | None = None
+    #: `HttpRunner` to'ldiradi — javobning HTTP status kodi. Sandbox va
+    #: lokal runner uchun har doim `None`.
+    response_status: int | None = None
 
 
 __all__ = [

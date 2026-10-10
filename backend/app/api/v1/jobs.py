@@ -54,6 +54,7 @@ from app.config import settings
 from app.constants import (
     MAX_TAG_LENGTH,
     FailureReason,
+    JobKind,
     JobStatus,
     LogStream,
     Priority,
@@ -131,6 +132,10 @@ async def get_job_filter(
         JobStatus | None,
         Query(alias="status", description="Holat bo'yicha filtr"),
     ] = None,
+    kind: Annotated[
+        JobKind | None,
+        Query(description="Job turi bo'yicha filtr: `code` yoki `http`"),
+    ] = None,
     runtime: Annotated[
         Runtime | None,
         Query(description="Bajarish muhiti bo'yicha filtr"),
@@ -189,6 +194,7 @@ async def get_job_filter(
     try:
         return JobFilter(
             status=status_,
+            kind=kind,
             runtime=runtime,
             priority=priority,
             failure_reason=failure_reason,

@@ -26,13 +26,17 @@ from app.constants import (
     MAX_TAG_LENGTH,
     MAX_TAGS,
     FailureReason,
+    HttpMethod,
+    JobKind,
     JobStatus,
     Priority,
     Runtime,
 )
+from app.exceptions import DurablError
 from app.schemas.base import DurablSchema, ORMSchema
 from app.schemas.execution import ExecutionLogRead, ExecutionSummary
 from app.utils.time_utils import ensure_utc, utcnow
+from app.utils.validators import validate_webhook_url
 
 #: Rejalashtirilgan vaqt uchun ruxsat etilgan "orqaga" chetlanish (soniya).
 #: Mijoz va server soatlari to'liq sinxron bo'lmasligi mumkin.
@@ -57,6 +61,19 @@ JOB_SORT_FIELDS: frozenset[str] = frozenset(
 #: Cron ifodasidagi maydonlar soni (5 — klassik, 6 — soniyali variant).
 _CRON_FIELD_COUNTS: frozenset[int] = frozenset({5, 6})
 
+#: `kind=HTTP` uchun chegaralar.
+MAX_TARGET_URL_LENGTH = 2_048
+MAX_HTTP_HEADERS = 32
+MAX_HTTP_HEADER_NAME_LENGTH = 128
+MAX_HTTP_HEADER_VALUE_LENGTH = 2_048
+
+#: Durabl o'zi qo'yadigan header prefiksi. Mijoz shu prefiksli header
+#: bersa, so'rov REJECT qilinadi — jim ustidan yozish o'rniga. Sababi:
+#: `HttpRunner` ularni baribir bosib o'tadi, ya'ni mijoz "men
+#: `X-Durabl-Attempt` ni o'zgartirdim" deb o'ylab, aslida hech narsa
+#: qilmagan bo'lardi. Aniq xato tushunarliroq.
+RESERVED_HEADER_PREFIX = "x-durabl-"
+
 
 # ---------------------------------------------------------------------------
 # So'rovlar
@@ -64,18 +81,78 @@ _CRON_FIELD_COUNTS: frozenset[int] = frozenset({5, 6})
 
 
 class JobCreate(DurablSchema):
-    """`POST /jobs` — yangi job yuborish."""
+    """`POST /jobs` — yangi job yuborish (ikki rejim).
 
-    code: Annotated[str, Field(min_length=1, max_length=settings.MAX_CODE_SIZE_BYTES)] = Field(
+    ## Ikki rejim bitta endpointda
+
+    * `kind="code"` (standart) — `code` va `runtime` beriladi, kod
+      sandboxda bajariladi.
+    * `kind="http"` — `target_url` beriladi, Durabl mijozning
+      endpointini chaqiradi.
+
+    Alohida endpoint (`POST /jobs/http`) ATAYLAB yasalmadi: ikkisi ayni
+    jadvalda yashaydi, ayni hayot siklidan o'tadi va ayni ro'yxat /
+    filtr / DLQ sahifalarida ko'rinadi. Ikki endpoint bo'lsa, bu
+    umumiylik API darajasida yashirilib qolardi.
+
+    `kind` standart qiymati `code` — mavjud mijozlar `kind` yubormasa
+    ham xulq o'zgarmaydi.
+
+    ## Nega mos kelmaydigan maydon JIM O'TKAZILMAYDI
+
+    `kind=http` bilan `code` yuborilsa, so'rov RAD ETILADI. Jim
+    e'tiborsiz qoldirish yomonroq: mijoz kodini yuborib, u hech qachon
+    bajarilmaganini bilmay qolardi.
+    """
+
+    kind: JobKind = Field(
+        default=JobKind.CODE,
         description=(
-            "Bajarilishi kerak bo'lgan manba kod. "
-            f"Maksimal hajm: {settings.MAX_CODE_SIZE_BYTES} bayt (UTF-8)."
+            "Job turi: `code` — kod sandboxda bajariladi; "
+            "`http` — ko'rsatilgan endpoint chaqiriladi."
         ),
-        examples=["print('Salom dunyo')"],
+        examples=[JobKind.CODE.value],
     )
-    runtime: Runtime = Field(
-        description="Bajarish muhiti: `python` yoki `node`",
+    code: Annotated[str, Field(min_length=1, max_length=settings.MAX_CODE_SIZE_BYTES)] | None = (
+        Field(
+            default=None,
+            description=(
+                "Bajarilishi kerak bo'lgan manba kod — `kind=code` uchun SHART. "
+                f"Maksimal hajm: {settings.MAX_CODE_SIZE_BYTES} bayt (UTF-8)."
+            ),
+            examples=["print('Salom dunyo')"],
+        )
+    )
+    runtime: Runtime | None = Field(
+        default=None,
+        description=(
+            "Bajarish muhiti: `python` yoki `node`. `kind=code` uchun SHART, "
+            "`kind=http` uchun ma'nosiz (berilmaydi)."
+        ),
         examples=[Runtime.PYTHON.value],
+    )
+    target_url: Annotated[str, Field(min_length=1, max_length=MAX_TARGET_URL_LENGTH)] | None = (
+        Field(
+            default=None,
+            description=(
+                "Chaqiriladigan endpoint — `kind=http` uchun SHART. "
+                "SSRF tekshiruvidan o'tadi: ichki va mahalliy manzillar taqiqlangan."
+            ),
+            examples=["https://api.example.com/durabl/nightly-report"],
+        )
+    )
+    http_method: HttpMethod | None = Field(
+        default=None,
+        description="HTTP metodi (`kind=http`). Berilmasa `POST`.",
+        examples=[HttpMethod.POST.value],
+    )
+    http_headers: dict[str, str] | None = Field(
+        default=None,
+        description=(
+            f"Qo'shimcha so'rov header'lari (maksimal {MAX_HTTP_HEADERS} ta). "
+            "`X-Durabl-*` prefiksi band — Durabl o'z header'larini qo'yadi."
+        ),
+        examples=[{"Authorization": "Bearer ..."}],
     )
     priority: Priority = Field(
         default=Priority.NORMAL,
@@ -139,11 +216,36 @@ class JobCreate(DurablSchema):
 
     @field_validator("code")
     @classmethod
-    def _check_code_size(cls, value: str) -> str:
+    def _check_code_size(cls, value: str | None) -> str | None:
         """Kod hajmini baytda tekshiradi (`max_length` belgi sonini sanaydi)."""
+        if value is None:
+            return None
         size = len(value.encode("utf-8"))
         if size > settings.MAX_CODE_SIZE_BYTES:
             raise ValueError(f"Kod hajmi {size} bayt — limit {settings.MAX_CODE_SIZE_BYTES} bayt")
+        return value
+
+    @field_validator("http_headers")
+    @classmethod
+    def _check_http_headers(cls, value: dict[str, str] | None) -> dict[str, str] | None:
+        """Header'lar sonini, nomini va uzunligini tekshiradi.
+
+        `X-Durabl-*` prefiksli header RAD ETILADI — `HttpRunner` ularni
+        baribir bosib o'tadi, ya'ni jim qabul qilish mijozni chalg'itadi.
+        """
+        if value is None:
+            return None
+        if len(value) > MAX_HTTP_HEADERS:
+            raise ValueError(f"Header'lar soni {MAX_HTTP_HEADERS} dan oshmasligi kerak")
+        for key, item in value.items():
+            if not key.strip():
+                raise ValueError("Header nomi bo'sh bo'lishi mumkin emas")
+            if len(key) > MAX_HTTP_HEADER_NAME_LENGTH:
+                raise ValueError(f"'{key}' nomi {MAX_HTTP_HEADER_NAME_LENGTH} belgidan uzun")
+            if key.lower().startswith(RESERVED_HEADER_PREFIX):
+                raise ValueError(f"'{key}' band: `X-Durabl-*` header'larini Durabl o'zi qo'yadi")
+            if len(item) > MAX_HTTP_HEADER_VALUE_LENGTH:
+                raise ValueError(f"'{key}' qiymati {MAX_HTTP_HEADER_VALUE_LENGTH} belgidan uzun")
         return value
 
     @field_validator("env_vars")
@@ -197,6 +299,56 @@ class JobCreate(DurablSchema):
         return " ".join(fields)
 
     @model_validator(mode="after")
+    def _check_kind_fields(self) -> JobCreate:
+        """Rejimga mos maydonlar berilganini tekshiradi.
+
+        Qoida sodda: har rejim o'z maydonlarini TALAB qiladi va
+        boshqasining maydonlarini RAD ETADI. Jim e'tiborsiz qoldirish
+        yo'q — mijoz nimani noto'g'ri yuborganini darhol biladi.
+
+        SSRF tekshiruvi ham shu yerda: mijoz 422 ni DARHOL oladi,
+        job yaratilib keyin bajarilish paytida yiqilishini kutmaydi.
+        Bajarishdan oldin `HttpRunner` tekshiruvni QAYTA o'tkazadi —
+        DNS yozuvi oradan o'zgarishi mumkin.
+        """
+        if self.kind is JobKind.HTTP:
+            if self.target_url is None:
+                raise ValueError("`kind=http` uchun `target_url` berilishi shart")
+            if self.code is not None:
+                raise ValueError(
+                    "`kind=http` bilan `code` berilmaydi — HTTP job kod bajarmaydi, "
+                    "mijozning endpointini chaqiradi"
+                )
+            if self.env_vars is not None:
+                raise ValueError(
+                    "`kind=http` bilan `env_vars` berilmaydi — ular sandbox muhiti "
+                    "uchun; HTTP so'rovga `http_headers` ishlatiladi"
+                )
+            try:
+                validate_webhook_url(self.target_url)
+            except DurablError as exc:
+                raise ValueError(f"`target_url` yaroqsiz: {exc.message}") from exc
+            return self
+
+        # kind == CODE
+        if self.code is None:
+            raise ValueError("`kind=code` uchun `code` berilishi shart")
+        if self.runtime is None:
+            raise ValueError("`kind=code` uchun `runtime` berilishi shart (`python` yoki `node`)")
+        http_only = {
+            "target_url": self.target_url,
+            "http_method": self.http_method,
+            "http_headers": self.http_headers,
+        }
+        extra = sorted(name for name, value in http_only.items() if value is not None)
+        if extra:
+            raise ValueError(
+                f"{extra} faqat `kind=http` uchun — kod rejimida e'tiborsiz qolmasligi "
+                "uchun rad etiladi"
+            )
+        return self
+
+    @model_validator(mode="after")
     def _check_scheduling(self) -> JobCreate:
         """Rejalashtirish maydonlarining o'zaro mosligini tekshiradi."""
         if self.scheduled_at is not None and self.cron_expression is not None:
@@ -216,6 +368,7 @@ class JobFilter(DurablSchema):
     """`GET /jobs` query parametrlari."""
 
     status: JobStatus | None = Field(default=None, description="Holat bo'yicha filtr")
+    kind: JobKind | None = Field(default=None, description="Job turi bo'yicha filtr")
     runtime: Runtime | None = Field(default=None, description="Bajarish muhiti bo'yicha filtr")
     priority: Priority | None = Field(default=None, description="Ustuvorlik bo'yicha filtr")
     failure_reason: FailureReason | None = Field(
@@ -255,7 +408,14 @@ class JobSummary(ORMSchema):
     id: uuid.UUID = Field(description="Job identifikatori")
     user_id: uuid.UUID = Field(description="Egasi — foydalanuvchi identifikatori")
     status: JobStatus = Field(description="Joriy holat")
-    runtime: Runtime = Field(description="Bajarish muhiti")
+    kind: JobKind = Field(
+        default=JobKind.CODE,
+        description="Job turi: `code` (sandboxda kod) yoki `http` (endpoint chaqiruvi)",
+    )
+    #: `kind=http` da bu maydon to'ldirilgan bo'ladi, lekin MA'NOSIZ —
+    #: HTTP job kod bajarmaydi. Ustun `nullable=False` bo'lgani uchun
+    #: neytral `python` yoziladi (`job_service.submit` ga qarang).
+    runtime: Runtime = Field(description="Bajarish muhiti (`kind=code` uchun)")
     priority: Priority = Field(description="Navbat ustuvorligi")
     retry_count: Annotated[int, Field(ge=0)] = Field(
         default=0, description="Bajarilgan qayta urinishlar soni"
@@ -298,8 +458,25 @@ class JobSummary(ORMSchema):
 class JobRead(JobSummary):
     """Bitta job'ning to'liq tafsiloti — `code` va natija bilan."""
 
-    code: str = Field(description="Yuborilgan manba kod")
-    payload: dict[str, Any] | None = Field(default=None, description="Kodga uzatilgan argumentlar")
+    code: str | None = Field(default=None, description="Yuborilgan manba kod (`kind=code` uchun)")
+    target_url: str | None = Field(
+        default=None, description="Chaqirilgan endpoint (`kind=http` uchun)"
+    )
+    http_method: HttpMethod | None = Field(
+        default=None, description="HTTP metodi (`kind=http` uchun)"
+    )
+    #: Mijoz bergan header'lar. `Authorization` kabi maxfiy qiymatlar
+    #: shu yerda QAYTADI — mijoz o'zi yuborgan, o'zi ko'radi. Boshqa
+    #: foydalanuvchiga chiqmaydi: `JobService.get()` egalik tekshiradi.
+    http_headers: dict[str, str] | None = Field(
+        default=None, description="So'rov header'lari (`kind=http` uchun)"
+    )
+    response_status: int | None = Field(
+        default=None, description="Javobning HTTP status kodi (`kind=http`, oxirgi urinish)"
+    )
+    payload: dict[str, Any] | None = Field(
+        default=None, description="Kodga uzatilgan argumentlar yoki so'rov tanasi"
+    )
     env_vars: dict[str, str] | None = Field(
         default=None, description="Sandbox muhit o'zgaruvchilari"
     )

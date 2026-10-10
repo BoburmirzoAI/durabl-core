@@ -33,7 +33,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import selectinload
 
 from app.config import settings
-from app.constants import FailureReason, JobStatus, Priority, Runtime, StrEnum
+from app.constants import FailureReason, JobKind, JobStatus, Priority, Runtime, StrEnum
 from app.exceptions import ValidationError
 from app.models.job import Job
 from app.repositories.base import BaseRepository
@@ -52,6 +52,7 @@ JOB_SORT_COLUMNS: frozenset[str] = frozenset(
         "status",
         "priority",
         "runtime",
+        "kind",
         "retry_count",
     }
 )
@@ -165,6 +166,7 @@ class JobRepository(BaseRepository[Job]):
         self,
         user_id: uuid.UUID | str | None = None,
         status: JobStatus | str | Sequence[JobStatus | str] | None = None,
+        kind: JobKind | str | Sequence[JobKind | str] | None = None,
         runtime: Runtime | str | Sequence[Runtime | str] | None = None,
         priority: Priority | str | Sequence[Priority | str] | None = None,
         start: datetime | None = None,
@@ -182,6 +184,8 @@ class JobRepository(BaseRepository[Job]):
         Args:
             user_id: Faqat shu foydalanuvchining job'lari (`None` — hammasi, admin).
             status: Bitta holat yoki holatlar ro'yxati (`IN`).
+            kind: Job turi (`code` / `http`) — bitta yoki ro'yxat.
+                `ix_jobs_kind` indeksidan foydalanadi.
             runtime: Bitta runtime yoki ro'yxat.
             priority: Bitta ustuvorlik yoki ro'yxat.
             start: `created_at >= start`.
@@ -206,6 +210,7 @@ class JobRepository(BaseRepository[Job]):
         conditions = self._conditions(
             user_id=user_id,
             status=status,
+            kind=kind,
             runtime=runtime,
             priority=priority,
             start=start,
@@ -591,6 +596,7 @@ class JobRepository(BaseRepository[Job]):
         *,
         user_id: uuid.UUID | str | None = None,
         status: JobStatus | str | Sequence[JobStatus | str] | None = None,
+        kind: JobKind | str | Sequence[JobKind | str] | None = None,
         runtime: Runtime | str | Sequence[Runtime | str] | None = None,
         priority: Priority | str | Sequence[Priority | str] | None = None,
         failure_reason: FailureReason | str | Sequence[FailureReason | str] | None = None,
@@ -610,6 +616,10 @@ class JobRepository(BaseRepository[Job]):
         status_condition = self._enum_condition(Job.status, JobStatus, status)
         if status_condition is not None:
             conditions.append(status_condition)
+
+        kind_condition = self._enum_condition(Job.kind, JobKind, kind)
+        if kind_condition is not None:
+            conditions.append(kind_condition)
 
         runtime_condition = self._enum_condition(Job.runtime, Runtime, runtime)
         if runtime_condition is not None:
