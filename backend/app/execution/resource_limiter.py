@@ -43,6 +43,7 @@ from app.constants import (
     SANDBOX_WORKDIR,
     PlanLimits,
     PlanType,
+    Runtime,
     plan_limits,
 )
 from app.exceptions import SandboxError
@@ -102,6 +103,30 @@ BYTES_PER_MB: Final[int] = 1024 * 1024
 #: limitdan ko'p virtual manzil band qiladi) — natijada mijoz kodi
 #: bajarilmasdan o'ladi. Xotira cheklovi baribir cgroup darajasida bor.
 RLIMIT_AS_SUPPORTED: Final[bool] = sys.platform.startswith("linux")
+
+#: `RLIMIT_AS` QAYSI runtime'larga QO'YILMAYDI.
+#:
+#: V8 (Node) ishga tushishida katta virtual manzil diapazonini oldindan
+#: zahiralaydi — bu HAQIQIY xotira sarfi emas, faqat manzil maydoni.
+#: `RLIMIT_AS` esa aynan manzil maydonini cheklaydi, ya'ni V8 uchun u
+#: xotira nazorati emas, oddiy to'siq bo'lib qoladi.
+#:
+#: Linux'da o'lchangan (`node v20`, `console.log("salom")`):
+#:
+#:     RLIMIT_AS yo'q    -> exit 0
+#:     RLIMIT_AS 256 MB  -> SIGTRAP: "Failed to reserve virtual memory
+#:                          for CodeRange"
+#:     RLIMIT_AS 512 MB  -> exit 0
+#:
+#: Ya'ni standart `SANDBOX_MEMORY_MB=256` bilan Linux'da HAR QANDAY Node
+#: job'i mijoz kodiga yetib bormasdan o'lardi (FREE rejada xotira
+#: chegarasi ham aynan 256 MB). macOS'da `RLIMIT_AS` qo'yilmagani uchun
+#: bu ko'rinmasdi — xato faqat Linux'da chiqardi.
+#:
+#: CPython 256 MB'ga sig'adi (o'lchangan), shuning uchun Python uchun
+#: limit SAQLANADI. Node uchun xotira nazorati konteyner darajasida
+#: (`--memory`, cgroup) ishlaydi va u haqiqiy RSS ni cheklaydi.
+RLIMIT_AS_EXCLUDED_RUNTIMES: Final[frozenset[Runtime]] = frozenset({Runtime.NODE})
 
 
 # ---------------------------------------------------------------------------
@@ -381,7 +406,9 @@ def to_docker_host_config(limits: ResourceLimits) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-def to_rlimits(limits: ResourceLimits) -> list[tuple[int, tuple[int, int]]]:
+def to_rlimits(
+    limits: ResourceLimits, *, runtime: Runtime | None = None
+) -> list[tuple[int, tuple[int, int]]]:
     """`resource.setrlimit` uchun `(limit_id, (soft, hard))` juftliklari.
 
     Faqat JORIY platformada ma'noga ega bo'lgan cheklovlar qaytadi:
@@ -390,12 +417,19 @@ def to_rlimits(limits: ResourceLimits) -> list[tuple[int, tuple[int, int]]]:
 
     Juftlikdagi `hard` qiymati `soft` ga TENG qo'yiladi — bola jarayon
     cheklovni o'zi yumshata olmasligi uchun.
+
+    Args:
+        limits: Qo'llanadigan resurs cheklovlari.
+        runtime: Qaysi runtime ishga tushadi. `RLIMIT_AS_EXCLUDED_RUNTIMES`
+            ichidagi runtime'lar uchun `RLIMIT_AS` QO'YILMAYDI (sababi
+            o'sha konstantada). `None` — runtime noma'lum, limit
+            qo'llanadi (eng qat'iy variant).
     """
     if resource is None:  # pragma: no cover - Windows
         return []
 
     desired: list[tuple[str, int]] = []
-    if RLIMIT_AS_SUPPORTED:
+    if RLIMIT_AS_SUPPORTED and runtime not in RLIMIT_AS_EXCLUDED_RUNTIMES:
         # Virtual manzil maydoni — xotira limitining protsess darajasidagi aksi.
         desired.append(("RLIMIT_AS", limits.memory_mb * BYTES_PER_MB))
     desired.extend(
@@ -420,7 +454,7 @@ def to_rlimits(limits: ResourceLimits) -> list[tuple[int, tuple[int, int]]]:
     return pairs
 
 
-def apply_rlimits(limits: ResourceLimits) -> Callable[[], None]:
+def apply_rlimits(limits: ResourceLimits, *, runtime: Runtime | None = None) -> Callable[[], None]:
     """`subprocess` ning `preexec_fn` uchun funksiya qaytaradi.
 
     Qaytgan funksiya `fork()` dan KEYIN, `exec()` dan OLDIN bola jarayonda
@@ -433,7 +467,7 @@ def apply_rlimits(limits: ResourceLimits) -> Callable[[], None]:
     ruxsat bermasligi) bajarishni to'xtatmaydi: resurs nazorati baribir
     bir necha qatlamda takrorlangan.
     """
-    pairs = to_rlimits(limits)
+    pairs = to_rlimits(limits, runtime=runtime)
 
     def _preexec() -> None:
         """Bola jarayonda cheklovlarni qo'yadi (xatoni jim o'tkazadi)."""
@@ -623,6 +657,7 @@ __all__ = [
     "NETWORK_MODE_BRIDGE",
     "NOFILE_PER_DISK_MB",
     "PLAN_SANDBOX_PROFILES",
+    "RLIMIT_AS_EXCLUDED_RUNTIMES",
     "RLIMIT_AS_SUPPORTED",
     "SECURITY_OPT_NO_NEW_PRIVILEGES",
     "TMPFS_FLAGS",

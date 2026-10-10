@@ -28,6 +28,7 @@ sozlangan — ya'ni API'dagi `stdout` oxirgi qator ko'chirishisiz
 from __future__ import annotations
 
 import json
+import shutil
 from datetime import timedelta
 from typing import TYPE_CHECKING, Any
 
@@ -370,13 +371,30 @@ async def test_function_with_payload_returns_value(
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.skipif(
+    shutil.which("node") is None,
+    reason="`node` PATH'da yo'q — JavaScript job'ini lokal bajarish imkonsiz",
+)
 async def test_node_runtime_executes(
     client: httpx.AsyncClient,
     api_prefix: str,
     auth_headers: dict[str, str],
     run_until: Callable[..., Awaitable[Job]],
 ) -> None:
-    """`console.log('salom')` -> SUCCESS (ayni worker, boshqa runtime)."""
+    """`console.log('salom')` -> SUCCESS (ayni worker, boshqa runtime).
+
+    ## Nega `skipif` kerak
+
+    `SANDBOX_ENABLED=false` bo'lgani uchun kod `LocalRunner` orqali
+    HOST'dagi `node` bilan bajariladi. Node o'rnatilmagan mashinada
+    `NodeRuntime._require_node()` tushunarli `SandboxUnavailableError`
+    tashlaydi, lekin job `FAILED` ga o'tadi va test quruq
+    `AssertionError` bilan yiqiladi — sababi ko'rinmaydi.
+
+    Shuning uchun shart oldindan tekshiriladi (`tests/docker/conftest.py`
+    Docker uchun ayni shunday qiladi): yo'q bo'lsa test O'TKAZIB
+    YUBORILADI, yolg'on yiqilish bermaydi.
+    """
     submitted = await client.post(
         f"{api_prefix}/jobs",
         headers=auth_headers,

@@ -285,7 +285,10 @@ class LocalRunner:
             # bo'lsa ham zombi qolmaydi.
             kwargs["start_new_session"] = True
             # `fork()` dan keyin, `exec()` dan oldin rlimit qo'yiladi.
-            kwargs["preexec_fn"] = apply_rlimits(spec.limits)
+            # `runtime` UZATILISHI SHART: Node uchun `RLIMIT_AS`
+            # qo'yilmaydi, aks holda V8 virtual manzil zahiralay olmasdan
+            # o'ladi (sababi `RLIMIT_AS_EXCLUDED_RUNTIMES` da).
+            kwargs["preexec_fn"] = apply_rlimits(spec.limits, runtime=spec.runtime)
 
         try:
             process = await asyncio.create_subprocess_exec(

@@ -440,6 +440,65 @@ def test_to_rlimits_as_faqat_linuxda() -> None:
         assert posix_resource.RLIMIT_AS not in pairs
 
 
+def test_to_rlimits_node_uchun_as_QOYILMAYDI() -> None:
+    """Node uchun `RLIMIT_AS` HECH QACHON qo'yilmaydi — platformadan qat'i nazar.
+
+    ## Nega bu test bor
+
+    Bu HAQIQIY xato bo'lgan va faqat Linux'da chiqqan. V8 ishga
+    tushishida katta virtual manzil diapazonini oldindan zahiralaydi
+    (bu RSS emas, faqat manzil maydoni), `RLIMIT_AS` esa aynan shu
+    maydonni cheklaydi.
+
+    Linux'da o'lchangan (`node v20`, `console.log("salom")`):
+
+        RLIMIT_AS yo'q    -> exit 0
+        RLIMIT_AS 256 MB  -> SIGTRAP, "Failed to reserve virtual memory
+                             for CodeRange"
+        RLIMIT_AS 512 MB  -> exit 0
+
+    Standart `SANDBOX_MEMORY_MB` 256, FREE rejada xotira chegarasi ham
+    256 — ya'ni Linux'da HAR QANDAY Node job'i mijoz kodiga yetib
+    bormasdan o'lardi. macOS'da `RLIMIT_AS` qo'yilmagani uchun bu
+    ko'rinmasdi va `tests/e2e/test_full_flow.py::test_node_runtime_executes`
+    faqat CI'da (Linux) yiqilardi.
+
+    Shu sababli tekshiruv platformaga BOG'LIQ EMAS: `None` bo'lsin,
+    Linux bo'lsin — Node uchun limit bo'lmasligi SHART.
+    """
+    import resource as posix_resource
+
+    pairs = dict(to_rlimits(make_limits(memory_mb=256), runtime=Runtime.NODE))
+    assert posix_resource.RLIMIT_AS not in pairs
+    # Qolgan cheklovlar o'z joyida — faqat `RLIMIT_AS` chiqarib tashlanadi.
+    assert posix_resource.RLIMIT_CPU in pairs
+    assert posix_resource.RLIMIT_NOFILE in pairs
+
+
+def test_to_rlimits_python_uchun_as_saqlanadi() -> None:
+    """Python uchun `RLIMIT_AS` SAQLANADI (Linux'da).
+
+    CPython 256 MB virtual manzilga sig'adi (o'lchangan), shuning uchun
+    Node uchun qo'yilgan istisno Python'ga TARQALMASLIGI kerak — aks
+    holda himoya sababsiz yo'qolardi.
+    """
+    import resource as posix_resource
+
+    pairs = dict(to_rlimits(make_limits(memory_mb=256), runtime=Runtime.PYTHON))
+    if RLIMIT_AS_SUPPORTED:
+        assert pairs[posix_resource.RLIMIT_AS] == (256 * BYTES_PER_MB,) * 2
+    else:
+        assert posix_resource.RLIMIT_AS not in pairs
+
+
+def test_to_rlimits_runtime_berilmasa_eng_qatiy_variant() -> None:
+    """`runtime=None` — limit QO'LLANADI (noma'lum holatda qat'iyroq tomon)."""
+    import resource as posix_resource
+
+    pairs = dict(to_rlimits(make_limits(memory_mb=256), runtime=None))
+    assert (posix_resource.RLIMIT_AS in pairs) is RLIMIT_AS_SUPPORTED
+
+
 def test_apply_rlimits_funksiya_qaytaradi() -> None:
     """`apply_rlimits` — `preexec_fn` uchun argumentsiz funksiya."""
     preexec = apply_rlimits(make_limits())
