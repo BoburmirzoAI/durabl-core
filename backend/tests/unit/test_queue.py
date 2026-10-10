@@ -495,9 +495,7 @@ async def test_publish_event_umumiy_kanalga(queue: QueueService, fake_redis: Red
     assert '"job_id":"j1"' in str(message["data"])
 
 
-async def test_publish_event_foydalanuvchi_kanaliga(
-    queue: QueueService, fake_redis: Redis
-) -> None:
+async def test_publish_event_foydalanuvchi_kanaliga(queue: QueueService, fake_redis: Redis) -> None:
     """Hodisa tanasidagi `user_id` dan foydalanuvchi kanali aniqlanadi."""
     user_id = str(uuid.uuid4())
     pubsub = fake_redis.pubsub()

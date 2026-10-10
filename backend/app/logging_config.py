@@ -64,7 +64,7 @@ def _log_json_default(value: Any) -> Any:
 def _shared_processors() -> list[Processor]:
     """structlog va standart `logging` uchun umumiy processor zanjiri."""
     return [
-        structlog.contextvars.merge_contextvars,   # request_id/correlation_id/user_id
+        structlog.contextvars.merge_contextvars,  # request_id/correlation_id/user_id
         structlog.stdlib.add_log_level,
         structlog.stdlib.add_logger_name,
         structlog.processors.TimeStamper(fmt="iso", utc=True),

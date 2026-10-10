@@ -41,9 +41,7 @@ config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
 #: `Base.metadata` da ataylab yo'q bo'lgan, lekin DB'da MAVJUD indekslar.
 #: `include_object()` ularni autogeneratsiyadan chiqaradi (sababi quyida).
-AUTOGENERATE_IGNORED_INDEXES: frozenset[str] = frozenset(
-    {"ix_jobs_tags_gin", "ix_dlq_unresolved"}
-)
+AUTOGENERATE_IGNORED_INDEXES: frozenset[str] = frozenset({"ix_jobs_tags_gin", "ix_dlq_unresolved"})
 
 
 def include_object(

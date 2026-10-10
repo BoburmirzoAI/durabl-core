@@ -89,9 +89,7 @@ async def test_create_returns_secret_once(
     assert created["user_id"] == str(user.id)
     assert created["is_active"] is True
 
-    fetched = await client.get(
-        f"{api_prefix}/webhooks/{created['id']}", headers=auth_headers
-    )
+    fetched = await client.get(f"{api_prefix}/webhooks/{created['id']}", headers=auth_headers)
     assert fetched.status_code == 200, fetched.text
     assert "secret" not in fetched.json()
 
@@ -144,15 +142,11 @@ async def test_delete_removes_webhook(
     """`DELETE` dan keyin webhook topilmaydi."""
     created = await create_webhook(client, api_prefix, auth_headers)
 
-    deleted = await client.delete(
-        f"{api_prefix}/webhooks/{created['id']}", headers=auth_headers
-    )
+    deleted = await client.delete(f"{api_prefix}/webhooks/{created['id']}", headers=auth_headers)
     assert deleted.status_code == 200, deleted.text
     assert deleted.json()["success"] is True
 
-    missing = await client.get(
-        f"{api_prefix}/webhooks/{created['id']}", headers=auth_headers
-    )
+    missing = await client.get(f"{api_prefix}/webhooks/{created['id']}", headers=auth_headers)
     assert missing.status_code == 404, missing.text
     assert missing.json()["error"]["code"] == "WEBHOOK_NOT_FOUND"
 

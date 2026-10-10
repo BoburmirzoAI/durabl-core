@@ -95,23 +95,74 @@ def _label(value: object) -> str:
 
 #: Job bajarilish vaqti — millisekunddan 10 daqiqagacha (MAX_TIMEOUT_SECONDS=900).
 JOB_DURATION_BUCKETS: Final[tuple[float, ...]] = (
-    0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0, 600.0, 900.0,
+    0.05,
+    0.1,
+    0.25,
+    0.5,
+    1.0,
+    2.5,
+    5.0,
+    10.0,
+    30.0,
+    60.0,
+    120.0,
+    300.0,
+    600.0,
+    900.0,
 )
 #: Navbatda kutish — SLA uchun eng muhim ko'rsatkich, pastda zich.
 QUEUE_WAIT_BUCKETS: Final[tuple[float, ...]] = (
-    0.005, 0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0, 60.0, 300.0,
+    0.005,
+    0.01,
+    0.05,
+    0.1,
+    0.25,
+    0.5,
+    1.0,
+    2.5,
+    5.0,
+    10.0,
+    30.0,
+    60.0,
+    300.0,
 )
 #: Sandbox (konteyner) yaratish — gVisor odatda 100-500 ms.
 SANDBOX_CREATE_BUCKETS: Final[tuple[float, ...]] = (
-    0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0,
+    0.05,
+    0.1,
+    0.25,
+    0.5,
+    1.0,
+    2.0,
+    5.0,
+    10.0,
+    30.0,
 )
 #: Webhook yuborish — tashqi HTTP (WEBHOOK_TIMEOUT_SECONDS=10).
 WEBHOOK_DURATION_BUCKETS: Final[tuple[float, ...]] = (
-    0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0,
+    0.01,
+    0.05,
+    0.1,
+    0.25,
+    0.5,
+    1.0,
+    2.5,
+    5.0,
+    10.0,
 )
 #: HTTP so'rov — API javob tezligi.
 HTTP_DURATION_BUCKETS: Final[tuple[float, ...]] = (
-    0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0,
+    0.005,
+    0.01,
+    0.025,
+    0.05,
+    0.1,
+    0.25,
+    0.5,
+    1.0,
+    2.5,
+    5.0,
+    10.0,
 )
 
 
@@ -269,12 +320,8 @@ def track_request(method: str, path: str, status: int | str, duration: float) ->
     if not settings.METRICS_ENABLED:
         return
     method_label = method.upper()
-    http_requests_total.labels(
-        method=method_label, path=path, status=_label(status)
-    ).inc()
-    http_request_duration_seconds.labels(method=method_label, path=path).observe(
-        max(0.0, duration)
-    )
+    http_requests_total.labels(method=method_label, path=path, status=_label(status)).inc()
+    http_request_duration_seconds.labels(method=method_label, path=path).observe(max(0.0, duration))
 
 
 def track_job_submitted(count: int = 1) -> None:

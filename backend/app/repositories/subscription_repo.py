@@ -35,13 +35,9 @@ class SubscriptionRepository(BaseRepository[Subscription]):
     # O'qish
     # ------------------------------------------------------------------
 
-    async def get_for_user(
-        self, user_id: uuid.UUID | str
-    ) -> Subscription | None:
+    async def get_for_user(self, user_id: uuid.UUID | str) -> Subscription | None:
         """Foydalanuvchining obunasi (yo'q bo'lsa `None`)."""
-        stmt = select(Subscription).where(
-            Subscription.user_id == self._coerce_id(user_id)
-        )
+        stmt = select(Subscription).where(Subscription.user_id == self._coerce_id(user_id))
         result = await self._execute(stmt)
         return result.scalars().first()
 
@@ -59,9 +55,7 @@ class SubscriptionRepository(BaseRepository[Subscription]):
     # Yozish
     # ------------------------------------------------------------------
 
-    async def ensure_for_user(
-        self, user_id: uuid.UUID | str
-    ) -> Subscription:
+    async def ensure_for_user(self, user_id: uuid.UUID | str) -> Subscription:
         """Obunani qaytaradi; yo'q bo'lsa FREE reja bilan yaratadi.
 
         **Poyga (race) holati.** Ikki parallel so'rov bir vaqtda obuna

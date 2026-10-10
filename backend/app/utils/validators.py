@@ -655,8 +655,7 @@ def validate_cron(expression: str) -> None:
             )
     elif len(candidate.split()) not in (5, 6):
         raise ValidationError(
-            "Cron ifodasi 5 maydon (`m h dom mon dow`) yoki 6 maydon "
-            "(soniya bilan) bo'lishi kerak",
+            "Cron ifodasi 5 maydon (`m h dom mon dow`) yoki 6 maydon (soniya bilan) bo'lishi kerak",
             details={"expression": candidate},
         )
 

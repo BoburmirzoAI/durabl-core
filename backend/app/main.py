@@ -570,9 +570,7 @@ async def durabl_error_handler(request: Request, exc: DurablError) -> JSONRespon
     )
 
 
-async def request_validation_handler(
-    request: Request, exc: RequestValidationError
-) -> JSONResponse:
+async def request_validation_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
     """FastAPI'ning so'rov validatsiyasi — 422.
 
     Tana, query, path va header xatolari shu yerga keladi. Har bir xato

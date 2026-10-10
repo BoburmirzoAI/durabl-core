@@ -245,9 +245,9 @@ def test_compute_backoff_max_delay_bilan_cheklanadi() -> None:
 def test_compute_backoff_siyosat_bilan_ayni_natija() -> None:
     """`compute_backoff` va `RetryPolicy.compute_delay` bir xil hisoblaydi."""
     for attempt in range(1, 7):
-        assert compute_backoff(attempt, jitter=False) == RetryPolicy(
-            jitter=False
-        ).compute_delay(attempt)
+        assert compute_backoff(attempt, jitter=False) == RetryPolicy(jitter=False).compute_delay(
+            attempt
+        )
 
 
 # ---------------------------------------------------------------------------

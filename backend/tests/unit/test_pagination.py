@@ -82,9 +82,7 @@ def test_apply_sorting_rejects_field_outside_allow_list() -> None:
     Bu SQL injection'dan asosiy himoya: `sort_by` mijozdan keladi.
     """
     with pytest.raises(ValidationError) as exc_info:
-        apply_sorting(
-            select(Job), Job, sort_by="hashed_password", allowed=["created_at", "status"]
-        )
+        apply_sorting(select(Job), Job, sort_by="hashed_password", allowed=["created_at", "status"])
 
     assert exc_info.value.details["allowed"] == ["created_at", "status"]
 
@@ -143,9 +141,7 @@ def test_decode_cursor_rejects_non_object_payload() -> None:
 
 def test_build_cursor_page_trims_extra_item_and_sets_cursor() -> None:
     """`limit+1` usuli: ortiqcha element kesiladi, `has_more=True`."""
-    page = build_cursor_page(
-        [1, 2, 3], limit=2, cursor_builder=lambda item: f"cursor-{item}"
-    )
+    page = build_cursor_page([1, 2, 3], limit=2, cursor_builder=lambda item: f"cursor-{item}")
 
     assert isinstance(page, CursorPage)
     assert page.items == [1, 2]

@@ -189,9 +189,9 @@ async def test_retry_chain_ends_in_dlq_then_manual_retry(
     # --- `executions` jadvalida UCHTA urinish ------------------------
     executions = await fetch_executions(job_id)
     assert [item.attempt_number for item in executions] == [1, 2, 3]
-    assert all(
-        ExecutionStatus(item.status) is ExecutionStatus.FAILED for item in executions
-    ), [str(item.status) for item in executions]
+    assert all(ExecutionStatus(item.status) is ExecutionStatus.FAILED for item in executions), [
+        str(item.status) for item in executions
+    ]
 
     # --- DLQ yozuvi --------------------------------------------------
     listed = await client.get(f"{api_prefix}/dlq", headers=auth_headers)
@@ -228,9 +228,7 @@ async def test_retry_chain_ends_in_dlq_then_manual_retry(
     assert JobStatus(job.status) is JobStatus.QUEUED
     assert job.retry_count == 0
     assert job.failure_reason is None
-    assert await scheduler.redis.lrange(RedisKeys.queue("normal"), 0, -1) == [
-        f"normal:{job_id}"
-    ]
+    assert await scheduler.redis.lrange(RedisKeys.queue("normal"), 0, -1) == [f"normal:{job_id}"]
 
     # DLQ chuqurligi bo'shadi (yozuvning O'ZI tarix uchun qoladi).
     stats = await client.get(f"{api_prefix}/dlq/stats", headers=auth_headers)
@@ -499,9 +497,7 @@ async def test_two_workers_execute_job_exactly_once(
 
     # ENG MUHIM TASDIQ: kod bir marta bajarilgan.
     executions = await fetch_executions(job_id)
-    assert len(executions) == 1, [
-        (item.attempt_number, item.worker_id) for item in executions
-    ]
+    assert len(executions) == 1, [(item.attempt_number, item.worker_id) for item in executions]
     assert executions[0].attempt_number == 1
     assert ExecutionStatus(executions[0].status) is ExecutionStatus.SUCCESS
 

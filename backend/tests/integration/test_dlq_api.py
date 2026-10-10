@@ -104,9 +104,7 @@ async def test_list_filters(
 ) -> None:
     """`resolved`, `failure_reason` va `job_id` filtrlari ishlaydi."""
     timeout_job = await job_factory(status=JobStatus.FAILED, retry_count=3)
-    timeout_entry = await push_to_dlq(
-        db_session, timeout_job, failure_reason=FailureReason.TIMEOUT
-    )
+    timeout_entry = await push_to_dlq(db_session, timeout_job, failure_reason=FailureReason.TIMEOUT)
     other_job = await job_factory(status=JobStatus.FAILED, retry_count=3)
     await push_to_dlq(db_session, other_job, failure_reason=FailureReason.OOM)
 
@@ -229,9 +227,7 @@ async def test_second_retry_conflicts(
     first = await client.post(f"{api_prefix}/dlq/{entry_id}/retry", headers=auth_headers, json={})
     assert first.status_code == 200, first.text
 
-    second = await client.post(
-        f"{api_prefix}/dlq/{entry_id}/retry", headers=auth_headers, json={}
-    )
+    second = await client.post(f"{api_prefix}/dlq/{entry_id}/retry", headers=auth_headers, json={})
     assert second.status_code == 409, second.text
     assert second.json()["error"]["code"] == "DLQ_ALREADY_RESOLVED"
 

@@ -347,14 +347,25 @@ test-cov-html: ## Qoplama HTML hisoboti
 	cd $(BACKEND) && $(PYTEST) --cov=app --cov-report=html
 	@printf "Hisobot: $(BACKEND)/htmlcov/index.html\n"
 
+# `RUFF_PATHS` da `alembic` HAM bor: migratsiyalar oddiy kod, ular ham
+# formatlanishi kerak. `pyproject.toml` dagi `per-file-ignores` esa
+# `alembic/versions/*` uchun autogenerate qoldiradigan uch qoidani
+# (`E402`, `F401`, `I001`) o'chiradi, shuning uchun bu qamrov yolg'on
+# ogohlantirish bermaydi.
+#
+# `MYPY` esa faqat `app` ni tekshiradi (`alembic` va `tests` emas) —
+# ataylab: migratsiya fayllari Alembic'ning dinamik `op` obyekti bilan
+# ishlaydi, testlarda esa fixture tiplari to'liq yozilmagan.
+RUFF_PATHS := app tests scripts alembic
+
 lint: ## ruff + mypy (o'zgartirmaydi)
-	cd $(BACKEND) && $(RUFF) check app tests scripts
-	cd $(BACKEND) && $(RUFF) format --check app tests scripts
+	cd $(BACKEND) && $(RUFF) check $(RUFF_PATHS)
+	cd $(BACKEND) && $(RUFF) format --check $(RUFF_PATHS)
 	cd $(BACKEND) && $(MYPY) app
 
 format: ## Kodni formatlaydi va oson xatolarni tuzatadi
-	cd $(BACKEND) && $(RUFF) format app tests scripts
-	cd $(BACKEND) && $(RUFF) check --fix app tests scripts
+	cd $(BACKEND) && $(RUFF) format $(RUFF_PATHS)
+	cd $(BACKEND) && $(RUFF) check --fix $(RUFF_PATHS)
 
 check: lint test ## CI darvozasi: lint + test
 	@printf "$(C_GRN)Hamma tekshiruv o'tdi.$(C_OFF)\n"

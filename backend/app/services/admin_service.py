@@ -180,9 +180,7 @@ class AdminService:
 
         if changes_active:
             action = AuditAction.USER_ACTIVATED if data.is_active else AuditAction.USER_DEACTIVATED
-            records.append(
-                (action, self._diff("is_active", user.is_active, bool(data.is_active)))
-            )
+            records.append((action, self._diff("is_active", user.is_active, bool(data.is_active))))
             await self.users.set_active(user, active=bool(data.is_active))
 
         if changes_admin:
@@ -315,8 +313,7 @@ class AdminService:
             return
         logger.warning("admin.last_admin_protected", user_id=str(target.id), reason=reason)
         raise PermissionDeniedError(
-            "Tizimdagi oxirgi faol administratorni huquqdan ayirish yoki "
-            "bloklash mumkin emas",
+            "Tizimdagi oxirgi faol administratorni huquqdan ayirish yoki bloklash mumkin emas",
             details={"reason": reason, "user_id": str(target.id)},
         )
 

@@ -345,9 +345,7 @@ class Worker:
         try:
             async with heartbeat:
                 await heartbeat.start(job_id, self.worker_id)
-                task = asyncio.create_task(
-                    execution_service.execute_job(job, self.worker_id)
-                )
+                task = asyncio.create_task(execution_service.execute_job(job, self.worker_id))
                 self._execution_task = task
                 finished = await self._await_execution(task, job_id)
 

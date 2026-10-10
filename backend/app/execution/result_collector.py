@@ -348,9 +348,7 @@ class ResultCollector:
             piece, _ = truncate_bytes(remaining, settings.MAX_LOG_CHUNK_BYTES)
             if not piece:  # pragma: no cover - chegara 4 baytdan kichik bo'lsa
                 break
-            self._logs.append(
-                LogEntry(stream=stream, content=piece, sequence=self._sequence)
-            )
+            self._logs.append(LogEntry(stream=stream, content=piece, sequence=self._sequence))
             self._sequence += 1
             remaining = remaining[len(piece) :]
 

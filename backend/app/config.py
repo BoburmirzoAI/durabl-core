@@ -279,9 +279,7 @@ class Settings(BaseSettings):
                 try:
                     parsed = json.loads(stripped)
                 except ValueError as exc:
-                    raise ValueError(
-                        f"Ro'yxat sozlamasi yaroqsiz JSON: {stripped[:60]}"
-                    ) from exc
+                    raise ValueError(f"Ro'yxat sozlamasi yaroqsiz JSON: {stripped[:60]}") from exc
                 if not isinstance(parsed, list):
                     raise ValueError("Ro'yxat sozlamasi JSON massiv bo'lishi kerak")
                 return [str(item).strip() for item in parsed if str(item).strip()]
@@ -355,10 +353,7 @@ class Settings(BaseSettings):
     @property
     def sync_database_url(self) -> str:
         """Alembic uchun sinxron URL (asyncpg -> psycopg2 emas, balki asyncpg'ni olib tashlash)."""
-        return (
-            self.DATABASE_URL.replace("+asyncpg", "")
-            .replace("+aiosqlite", "")
-        )
+        return self.DATABASE_URL.replace("+asyncpg", "").replace("+aiosqlite", "")
 
     @property
     def worker_id(self) -> str:

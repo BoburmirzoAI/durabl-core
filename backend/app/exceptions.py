@@ -134,7 +134,9 @@ class NotFoundError(DurablError):
         identifier: Any = None,
         **kwargs: Any,
     ) -> None:
-        msg = f"{resource} topilmadi" if identifier is None else f"{resource} topilmadi: {identifier}"
+        msg = (
+            f"{resource} topilmadi" if identifier is None else f"{resource} topilmadi: {identifier}"
+        )
         details = kwargs.pop("details", {}) or {}
         details.setdefault("resource", resource)
         if identifier is not None:
@@ -216,7 +218,9 @@ class IdempotencyConflictError(ConflictError):
 class IdempotencyInProgressError(ConflictError):
     """Ayni shu kalit bilan so'rov hozir qayta ishlanmoqda."""
 
-    message = "Bu Idempotency-Key bilan so'rov hozir bajarilmoqda, birozdan keyin qayta urinib ko'ring"
+    message = (
+        "Bu Idempotency-Key bilan so'rov hozir bajarilmoqda, birozdan keyin qayta urinib ko'ring"
+    )
     code = "IDEMPOTENCY_IN_PROGRESS"
 
 

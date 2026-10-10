@@ -361,9 +361,7 @@ async def test_other_users_job_is_not_found(
     foreign_id = str((await job_factory(owner=other_user)).id)
 
     for path in ("", "/status", "/logs", "/result", "/timeline"):
-        response = await client.get(
-            f"{api_prefix}/jobs/{foreign_id}{path}", headers=auth_headers
-        )
+        response = await client.get(f"{api_prefix}/jobs/{foreign_id}{path}", headers=auth_headers)
         assert response.status_code == 404, f"{path}: {response.text}"
         assert response.json()["error"]["code"] == "JOB_NOT_FOUND"
 
@@ -437,9 +435,7 @@ async def test_quota_exceeded_payment_required(
     user: User,
 ) -> None:
     """Oylik kvota tugaganda `POST /jobs` 402 `QUOTA_EXCEEDED` beradi."""
-    db_session.add(
-        make_usage(user_id=user.id, period=month_key(), job_count=FREE_MONTHLY_JOBS)
-    )
+    db_session.add(make_usage(user_id=user.id, period=month_key(), job_count=FREE_MONTHLY_JOBS))
     await db_session.commit()
 
     response = await client.post(f"{api_prefix}/jobs", headers=auth_headers, json=submit_body())
@@ -487,9 +483,7 @@ async def test_idempotency_key_with_other_body_conflicts(
     assert conflict.json()["error"]["code"] == "IDEMPOTENCY_CONFLICT"
 
 
-async def test_submit_requires_authentication(
-    client: httpx.AsyncClient, api_prefix: str
-) -> None:
+async def test_submit_requires_authentication(client: httpx.AsyncClient, api_prefix: str) -> None:
     """Tokensiz yuborish 401 beradi va job yaratilmaydi."""
     response = await client.post(f"{api_prefix}/jobs", json=submit_body())
 
@@ -501,9 +495,7 @@ async def test_submit_with_api_key_allowed(
     client: httpx.AsyncClient, api_prefix: str, api_key_headers: dict[str, str]
 ) -> None:
     """`X-API-Key` bilan job yuborish ishlaydi (server-server integratsiya)."""
-    response = await client.post(
-        f"{api_prefix}/jobs", headers=api_key_headers, json=submit_body()
-    )
+    response = await client.post(f"{api_prefix}/jobs", headers=api_key_headers, json=submit_body())
 
     assert response.status_code == 201, response.text
     assert uuid.UUID(response.json()["id"])

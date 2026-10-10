@@ -79,8 +79,14 @@ def _enum(*values: str, name: str, length: int = 32) -> sa.Enum:
 
 #: `app.constants.JobStatus`
 JOB_STATUS = _enum(
-    "pending", "queued", "running", "success",
-    "failed", "retrying", "cancelled", "dead_letter",
+    "pending",
+    "queued",
+    "running",
+    "success",
+    "failed",
+    "retrying",
+    "cancelled",
+    "dead_letter",
     name="jobstatus",
 )
 #: `app.constants.Runtime`
@@ -89,29 +95,50 @@ RUNTIME = _enum("python", "node", name="runtime")
 PRIORITY = _enum("high", "normal", "low", name="priority")
 #: `app.constants.ExecutionStatus`
 EXECUTION_STATUS = _enum(
-    "pending", "running", "success", "failed", "timeout", "cancelled", "lost",
+    "pending",
+    "running",
+    "success",
+    "failed",
+    "timeout",
+    "cancelled",
+    "lost",
     name="executionstatus",
 )
 #: `app.constants.LogStream`
 LOG_STREAM = _enum("stdout", "stderr", "system", name="logstream")
 #: `app.constants.WebhookEvent`
 WEBHOOK_EVENT = _enum(
-    "job.queued", "job.started", "job.succeeded",
-    "job.failed", "job.cancelled", "job.dead_lettered",
+    "job.queued",
+    "job.started",
+    "job.succeeded",
+    "job.failed",
+    "job.cancelled",
+    "job.dead_lettered",
     name="webhookevent",
 )
 #: `app.constants.DeliveryStatus`
 DELIVERY_STATUS = _enum(
-    "pending", "success", "failed", "retrying", "exhausted",
+    "pending",
+    "success",
+    "failed",
+    "retrying",
+    "exhausted",
     name="deliverystatus",
 )
 #: `app.constants.PlanType`
 PLAN_TYPE = _enum("free", "starter", "pro", "enterprise", name="plantype")
 #: `app.constants.AuditAction` — qiymatlar uzun, shuning uchun `length=48`
 AUDIT_ACTION = _enum(
-    "user.created", "user.updated", "user.deactivated", "user.activated",
-    "user.promoted", "job.cancelled", "job.force_retried", "dlq.purged",
-    "api_key.revoked", "plan.changed",
+    "user.created",
+    "user.updated",
+    "user.deactivated",
+    "user.activated",
+    "user.promoted",
+    "job.cancelled",
+    "job.force_retried",
+    "dlq.purged",
+    "api_key.revoked",
+    "plan.changed",
     name="auditaction",
     length=48,
 )
@@ -124,9 +151,15 @@ def _failure_reason() -> sa.Enum:
     nechta `Table` ga ulash SQLAlchemy'da ogohlantirishga olib keladi.
     """
     return _enum(
-        "non_zero_exit", "timeout", "out_of_memory", "sandbox_error",
-        "validation_error", "lease_lost", "max_retries_exceeded",
-        "internal_error", "output_too_large",
+        "non_zero_exit",
+        "timeout",
+        "out_of_memory",
+        "sandbox_error",
+        "validation_error",
+        "lease_lost",
+        "max_retries_exceeded",
+        "internal_error",
+        "output_too_large",
         name="failurereason",
     )
 
@@ -195,12 +228,16 @@ def upgrade() -> None:
         sa.Column("is_admin", sa.Boolean(), server_default=sa.text("false"), nullable=False),
         sa.Column("last_login_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column(
-            "created_at", sa.DateTime(timezone=True),
-            server_default=sa.text("now()"), nullable=False,
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
         ),
         sa.Column(
-            "updated_at", sa.DateTime(timezone=True),
-            server_default=sa.text("now()"), nullable=False,
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_users")),
     )
@@ -224,16 +261,22 @@ def upgrade() -> None:
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("revoked_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column(
-            "created_at", sa.DateTime(timezone=True),
-            server_default=sa.text("now()"), nullable=False,
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
         ),
         sa.Column(
-            "updated_at", sa.DateTime(timezone=True),
-            server_default=sa.text("now()"), nullable=False,
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
         ),
         sa.ForeignKeyConstraint(
-            ["user_id"], ["users.id"],
-            name=op.f("fk_api_keys_user_id_users"), ondelete="CASCADE",
+            ["user_id"],
+            ["users.id"],
+            name=op.f("fk_api_keys_user_id_users"),
+            ondelete="CASCADE",
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_api_keys")),
     )
@@ -257,16 +300,22 @@ def upgrade() -> None:
         sa.Column("cancelled_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("external_customer_id", sa.String(length=128), nullable=True),
         sa.Column(
-            "created_at", sa.DateTime(timezone=True),
-            server_default=sa.text("now()"), nullable=False,
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
         ),
         sa.Column(
-            "updated_at", sa.DateTime(timezone=True),
-            server_default=sa.text("now()"), nullable=False,
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
         ),
         sa.ForeignKeyConstraint(
-            ["user_id"], ["users.id"],
-            name=op.f("fk_subscriptions_user_id_users"), ondelete="CASCADE",
+            ["user_id"],
+            ["users.id"],
+            name=op.f("fk_subscriptions_user_id_users"),
+            ondelete="CASCADE",
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_subscriptions")),
     )
@@ -290,22 +339,26 @@ def upgrade() -> None:
         sa.Column("execution_seconds", sa.Float(), server_default=sa.text("0"), nullable=False),
         sa.Column("recorded_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column(
-            "created_at", sa.DateTime(timezone=True),
-            server_default=sa.text("now()"), nullable=False,
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
         ),
         sa.Column(
-            "updated_at", sa.DateTime(timezone=True),
-            server_default=sa.text("now()"), nullable=False,
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
         ),
         sa.ForeignKeyConstraint(
-            ["user_id"], ["users.id"],
-            name=op.f("fk_usage_records_user_id_users"), ondelete="CASCADE",
+            ["user_id"],
+            ["users.id"],
+            name=op.f("fk_usage_records_user_id_users"),
+            ondelete="CASCADE",
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_usage_records")),
         # `UsageRepository.get_or_create(user_id, period)` shu cheklovga tayanadi
-        sa.UniqueConstraint(
-            "user_id", "period", name=op.f("uq_usage_records_user_id_period")
-        ),
+        sa.UniqueConstraint("user_id", "period", name=op.f("uq_usage_records_user_id_period")),
     )
     op.create_index(
         op.f("ix_usage_records_created_at"), "usage_records", ["created_at"], unique=False
@@ -354,16 +407,22 @@ def upgrade() -> None:
         sa.Column("correlation_id", sa.String(length=64), nullable=False),
         sa.Column("tags", JSON_TYPE, nullable=True),
         sa.Column(
-            "created_at", sa.DateTime(timezone=True),
-            server_default=sa.text("now()"), nullable=False,
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
         ),
         sa.Column(
-            "updated_at", sa.DateTime(timezone=True),
-            server_default=sa.text("now()"), nullable=False,
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
         ),
         sa.ForeignKeyConstraint(
-            ["user_id"], ["users.id"],
-            name=op.f("fk_jobs_user_id_users"), ondelete="CASCADE",
+            ["user_id"],
+            ["users.id"],
+            name=op.f("fk_jobs_user_id_users"),
+            ondelete="CASCADE",
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_jobs")),
         # Idempotency: bitta foydalanuvchi uchun kalit takrorlanmasin.
@@ -376,9 +435,7 @@ def upgrade() -> None:
     op.create_index(op.f("ix_jobs_scheduled_at"), "jobs", ["scheduled_at"], unique=False)
     op.create_index(op.f("ix_jobs_status"), "jobs", ["status"], unique=False)
     # Scheduler: `due_scheduled(now, limit)` — holat + vaqt bo'yicha
-    op.create_index(
-        "ix_jobs_status_scheduled", "jobs", ["status", "scheduled_at"], unique=False
-    )
+    op.create_index("ix_jobs_status_scheduled", "jobs", ["status", "scheduled_at"], unique=False)
     op.create_index(op.f("ix_jobs_user_id"), "jobs", ["user_id"], unique=False)
     # `JobRepository.search()` ning asosiy indeksi: egasi + holat + tartib
     op.create_index(
@@ -412,16 +469,22 @@ def upgrade() -> None:
         # (konteyner `stats` tugagandan keyin o'qiladi, `ru_maxrss` kumulyativ).
         sa.Column("memory_peak_mb", sa.Integer(), nullable=True),
         sa.Column(
-            "created_at", sa.DateTime(timezone=True),
-            server_default=sa.text("now()"), nullable=False,
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
         ),
         sa.Column(
-            "updated_at", sa.DateTime(timezone=True),
-            server_default=sa.text("now()"), nullable=False,
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
         ),
         sa.ForeignKeyConstraint(
-            ["job_id"], ["jobs.id"],
-            name=op.f("fk_executions_job_id_jobs"), ondelete="CASCADE",
+            ["job_id"],
+            ["jobs.id"],
+            name=op.f("fk_executions_job_id_jobs"),
+            ondelete="CASCADE",
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_executions")),
         # Bir urinish raqami bir job uchun faqat bir marta — ikki worker
@@ -455,12 +518,16 @@ def upgrade() -> None:
         sa.Column("sequence", sa.Integer(), nullable=False),
         sa.Column("timestamp", sa.DateTime(timezone=True), nullable=False),
         sa.ForeignKeyConstraint(
-            ["execution_id"], ["executions.id"],
-            name=op.f("fk_execution_logs_execution_id_executions"), ondelete="CASCADE",
+            ["execution_id"],
+            ["executions.id"],
+            name=op.f("fk_execution_logs_execution_id_executions"),
+            ondelete="CASCADE",
         ),
         sa.ForeignKeyConstraint(
-            ["job_id"], ["jobs.id"],
-            name=op.f("fk_execution_logs_job_id_jobs"), ondelete="CASCADE",
+            ["job_id"],
+            ["jobs.id"],
+            name=op.f("fk_execution_logs_job_id_jobs"),
+            ondelete="CASCADE",
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_execution_logs")),
     )
@@ -497,16 +564,22 @@ def upgrade() -> None:
         ),
         sa.Column("disabled_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column(
-            "created_at", sa.DateTime(timezone=True),
-            server_default=sa.text("now()"), nullable=False,
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
         ),
         sa.Column(
-            "updated_at", sa.DateTime(timezone=True),
-            server_default=sa.text("now()"), nullable=False,
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
         ),
         sa.ForeignKeyConstraint(
-            ["user_id"], ["users.id"],
-            name=op.f("fk_webhooks_user_id_users"), ondelete="CASCADE",
+            ["user_id"],
+            ["users.id"],
+            name=op.f("fk_webhooks_user_id_users"),
+            ondelete="CASCADE",
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_webhooks")),
     )
@@ -534,20 +607,28 @@ def upgrade() -> None:
         sa.Column("error_message", sa.Text(), nullable=True),
         sa.Column("duration_ms", sa.Integer(), nullable=True),
         sa.Column(
-            "created_at", sa.DateTime(timezone=True),
-            server_default=sa.text("now()"), nullable=False,
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
         ),
         sa.Column(
-            "updated_at", sa.DateTime(timezone=True),
-            server_default=sa.text("now()"), nullable=False,
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
         ),
         sa.ForeignKeyConstraint(
-            ["job_id"], ["jobs.id"],
-            name=op.f("fk_webhook_deliveries_job_id_jobs"), ondelete="CASCADE",
+            ["job_id"],
+            ["jobs.id"],
+            name=op.f("fk_webhook_deliveries_job_id_jobs"),
+            ondelete="CASCADE",
         ),
         sa.ForeignKeyConstraint(
-            ["webhook_id"], ["webhooks.id"],
-            name=op.f("fk_webhook_deliveries_webhook_id_webhooks"), ondelete="CASCADE",
+            ["webhook_id"],
+            ["webhooks.id"],
+            name=op.f("fk_webhook_deliveries_webhook_id_webhooks"),
+            ondelete="CASCADE",
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_webhook_deliveries")),
     )
@@ -560,7 +641,9 @@ def upgrade() -> None:
     # `WebhookDeliveryRepository.pending_retries(now, limit)` — `webhook_sender` worker'i
     op.create_index(
         op.f("ix_webhook_deliveries_next_retry_at"),
-        "webhook_deliveries", ["next_retry_at"], unique=False,
+        "webhook_deliveries",
+        ["next_retry_at"],
+        unique=False,
     )
     op.create_index(
         op.f("ix_webhook_deliveries_status"), "webhook_deliveries", ["status"], unique=False
@@ -587,28 +670,36 @@ def upgrade() -> None:
         # Admin hisobi o'chirilsa ham DLQ tarixi qolishi kerak -> SET NULL
         sa.Column("resolved_by_id", sa.Uuid(), nullable=True),
         sa.Column("notes", sa.Text(), nullable=True),
+        sa.Column("manual_retry_count", sa.Integer(), server_default=sa.text("0"), nullable=False),
         sa.Column(
-            "manual_retry_count", sa.Integer(), server_default=sa.text("0"), nullable=False
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
         ),
         sa.Column(
-            "created_at", sa.DateTime(timezone=True),
-            server_default=sa.text("now()"), nullable=False,
-        ),
-        sa.Column(
-            "updated_at", sa.DateTime(timezone=True),
-            server_default=sa.text("now()"), nullable=False,
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
         ),
         sa.ForeignKeyConstraint(
-            ["job_id"], ["jobs.id"],
-            name=op.f("fk_dlq_entries_job_id_jobs"), ondelete="CASCADE",
+            ["job_id"],
+            ["jobs.id"],
+            name=op.f("fk_dlq_entries_job_id_jobs"),
+            ondelete="CASCADE",
         ),
         sa.ForeignKeyConstraint(
-            ["resolved_by_id"], ["users.id"],
-            name=op.f("fk_dlq_entries_resolved_by_id_users"), ondelete="SET NULL",
+            ["resolved_by_id"],
+            ["users.id"],
+            name=op.f("fk_dlq_entries_resolved_by_id_users"),
+            ondelete="SET NULL",
         ),
         sa.ForeignKeyConstraint(
-            ["user_id"], ["users.id"],
-            name=op.f("fk_dlq_entries_user_id_users"), ondelete="CASCADE",
+            ["user_id"],
+            ["users.id"],
+            name=op.f("fk_dlq_entries_user_id_users"),
+            ondelete="CASCADE",
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_dlq_entries")),
     )
@@ -638,16 +729,22 @@ def upgrade() -> None:
         sa.Column("ip_address", sa.String(length=45), nullable=True),
         sa.Column("user_agent", sa.String(length=512), nullable=True),
         sa.Column(
-            "created_at", sa.DateTime(timezone=True),
-            server_default=sa.text("now()"), nullable=False,
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
         ),
         sa.Column(
-            "updated_at", sa.DateTime(timezone=True),
-            server_default=sa.text("now()"), nullable=False,
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
         ),
         sa.ForeignKeyConstraint(
-            ["admin_id"], ["users.id"],
-            name=op.f("fk_audit_logs_admin_id_users"), ondelete="SET NULL",
+            ["admin_id"],
+            ["users.id"],
+            name=op.f("fk_audit_logs_admin_id_users"),
+            ondelete="SET NULL",
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_audit_logs")),
     )

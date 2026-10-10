@@ -60,9 +60,7 @@ class WebhookDelivery(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         nullable=True,
         index=True,
     )
-    event: Mapped[WebhookEvent] = mapped_column(
-        enum_column(WebhookEvent), nullable=False
-    )
+    event: Mapped[WebhookEvent] = mapped_column(enum_column(WebhookEvent), nullable=False)
 
     # ------------------------------------------------------------------
     # Yuborish holati
@@ -80,9 +78,7 @@ class WebhookDelivery(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         Integer, default=1, server_default=text("1"), nullable=False
     )
     #: Keyingi urinish vaqti — `pending_retries()` shu bo'yicha tanlaydi
-    next_retry_at: Mapped[datetime | None] = mapped_column(
-        DateTimeTZ, nullable=True, index=True
-    )
+    next_retry_at: Mapped[datetime | None] = mapped_column(DateTimeTZ, nullable=True, index=True)
     #: Muvaffaqiyatli yetib borgan vaqt
     delivered_at: Mapped[datetime | None] = mapped_column(DateTimeTZ, nullable=True)
 
@@ -104,12 +100,8 @@ class WebhookDelivery(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     # Bog'lanishlar
     # ------------------------------------------------------------------
 
-    webhook: Mapped[Webhook] = relationship(
-        "Webhook", back_populates="deliveries", lazy="raise"
-    )
-    job: Mapped[Job | None] = relationship(
-        "Job", back_populates="webhook_deliveries", lazy="raise"
-    )
+    webhook: Mapped[Webhook] = relationship("Webhook", back_populates="deliveries", lazy="raise")
+    job: Mapped[Job | None] = relationship("Job", back_populates="webhook_deliveries", lazy="raise")
 
     # ------------------------------------------------------------------
     # Yordamchi xossalar

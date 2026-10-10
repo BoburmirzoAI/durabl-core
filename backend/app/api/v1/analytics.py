@@ -73,9 +73,7 @@ def _set_cache_headers(response: Response) -> None:
     `max-age` servisning kesh TTL'i bilan AYNI: brauzer serverdagi
     keshdan ko'proq eskirgan ma'lumotni ko'rsatmaydi.
     """
-    response.headers[HEADER_CACHE_CONTROL] = (
-        f"private, max-age={settings.STATS_CACHE_TTL_SECONDS}"
-    )
+    response.headers[HEADER_CACHE_CONTROL] = f"private, max-age={settings.STATS_CACHE_TTL_SECONDS}"
 
 
 @router.get(

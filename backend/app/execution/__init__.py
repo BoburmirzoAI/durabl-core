@@ -70,9 +70,7 @@ def __getattr__(name: str) -> Any:
     try:
         module = importlib.import_module(module_name)
     except ImportError as exc:  # pragma: no cover - modul yo'q/buzilgan holat
-        raise AttributeError(
-            f"`{name}` uchun `{module_name}` moduli yuklanmadi: {exc}"
-        ) from exc
+        raise AttributeError(f"`{name}` uchun `{module_name}` moduli yuklanmadi: {exc}") from exc
 
     try:
         value = getattr(module, name)

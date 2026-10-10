@@ -274,7 +274,10 @@ async def parallel_client(
         """Qatorlarni QISQA umrli sessiyada sanaydi (ilovaning holatidan mustaqil)."""
         stmt = select(func.count()).select_from(Job)
         if user_id is not None:
-            stmt = stmt.where(Job.user_id == (user_id if isinstance(user_id, uuid.UUID) else uuid.UUID(str(user_id))))
+            stmt = stmt.where(
+                Job.user_id
+                == (user_id if isinstance(user_id, uuid.UUID) else uuid.UUID(str(user_id)))
+            )
         async with get_sessionmaker()() as counting_session:
             return int(await counting_session.scalar(stmt) or 0)
 
@@ -377,9 +380,7 @@ def api_key_headers(api_key: tuple[ApiKey, str]) -> dict[str, str]:
 
 
 @pytest.fixture
-async def job_factory(
-    db_session: AsyncSession, user: User
-) -> Callable[..., Awaitable[Job]]:
+async def job_factory(db_session: AsyncSession, user: User) -> Callable[..., Awaitable[Job]]:
     """DB'ga bevosita job yozadigan fabrika (navbatga TEGMAYDI).
 
     Navbat va holat o'tishlari kerak bo'lsa `POST /jobs` yoki

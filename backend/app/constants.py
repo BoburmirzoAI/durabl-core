@@ -37,13 +37,13 @@ class JobStatus(StrEnum):
         FAILED   -> DEAD_LETTER | QUEUED (qo'lda retry)
     """
 
-    PENDING = "pending"          # DB'ga yozildi, hali navbatga qo'yilmadi
-    QUEUED = "queued"            # Redis navbatida, worker kutilmoqda
-    RUNNING = "running"          # Worker sandbox'da bajarmoqda
-    SUCCESS = "success"          # Muvaffaqiyatli tugadi (exit_code == 0)
-    FAILED = "failed"            # Xato bilan tugadi, retry imkoni bor
-    RETRYING = "retrying"        # Backoff kutilmoqda, qayta navbatga qo'yiladi
-    CANCELLED = "cancelled"      # Mijoz bekor qildi
+    PENDING = "pending"  # DB'ga yozildi, hali navbatga qo'yilmadi
+    QUEUED = "queued"  # Redis navbatida, worker kutilmoqda
+    RUNNING = "running"  # Worker sandbox'da bajarmoqda
+    SUCCESS = "success"  # Muvaffaqiyatli tugadi (exit_code == 0)
+    FAILED = "failed"  # Xato bilan tugadi, retry imkoni bor
+    RETRYING = "retrying"  # Backoff kutilmoqda, qayta navbatga qo'yiladi
+    CANCELLED = "cancelled"  # Mijoz bekor qildi
     DEAD_LETTER = "dead_letter"  # Barcha urinishlar tugadi -> DLQ
 
     @property
@@ -83,7 +83,7 @@ JOB_STATUS_TRANSITIONS: dict[JobStatus, frozenset[JobStatus]] = {
             JobStatus.SUCCESS,
             JobStatus.FAILED,
             JobStatus.RETRYING,
-            JobStatus.QUEUED,      # lease muddati tugadi -> qayta navbatga
+            JobStatus.QUEUED,  # lease muddati tugadi -> qayta navbatga
             JobStatus.CANCELLED,
         }
     ),
@@ -98,13 +98,13 @@ JOB_STATUS_TRANSITIONS: dict[JobStatus, frozenset[JobStatus]] = {
 class ExecutionStatus(StrEnum):
     """Bitta bajarish urinishining holati."""
 
-    PENDING = "pending"    # Yozildi, hali boshlanmadi
-    RUNNING = "running"    # Sandbox ishlamoqda
-    SUCCESS = "success"    # exit_code == 0
-    FAILED = "failed"      # exit_code != 0 yoki ichki xato
-    TIMEOUT = "timeout"    # Vaqt limiti oshdi
+    PENDING = "pending"  # Yozildi, hali boshlanmadi
+    RUNNING = "running"  # Sandbox ishlamoqda
+    SUCCESS = "success"  # exit_code == 0
+    FAILED = "failed"  # exit_code != 0 yoki ichki xato
+    TIMEOUT = "timeout"  # Vaqt limiti oshdi
     CANCELLED = "cancelled"
-    LOST = "lost"          # Lease tugadi, worker javob bermadi
+    LOST = "lost"  # Lease tugadi, worker javob bermadi
 
 
 class Runtime(StrEnum):
@@ -173,12 +173,12 @@ class DeliveryStatus(StrEnum):
 class FailureReason(StrEnum):
     """Job nega muvaffaqiyatsiz bo'ldi — DLQ'da tasniflash uchun."""
 
-    NON_ZERO_EXIT = "non_zero_exit"            # Kod xato bilan tugadi
-    TIMEOUT = "timeout"                        # Vaqt limiti
-    OOM = "out_of_memory"                      # Xotira limiti
-    SANDBOX_ERROR = "sandbox_error"            # Konteyner yaratilmadi
-    VALIDATION_ERROR = "validation_error"      # Kod validatsiyadan o'tmadi
-    LEASE_LOST = "lease_lost"                  # Worker qulab tushdi
+    NON_ZERO_EXIT = "non_zero_exit"  # Kod xato bilan tugadi
+    TIMEOUT = "timeout"  # Vaqt limiti
+    OOM = "out_of_memory"  # Xotira limiti
+    SANDBOX_ERROR = "sandbox_error"  # Konteyner yaratilmadi
+    VALIDATION_ERROR = "validation_error"  # Kod validatsiyadan o'tmadi
+    LEASE_LOST = "lease_lost"  # Worker qulab tushdi
     MAX_RETRIES_EXCEEDED = "max_retries_exceeded"
     INTERNAL_ERROR = "internal_error"
     OUTPUT_TOO_LARGE = "output_too_large"
@@ -228,7 +228,7 @@ class ScheduleStatus(StrEnum):
     """
 
     ACTIVE = "active"
-    PAUSED = "paused"    # Mijoz to'xtatdi
+    PAUSED = "paused"  # Mijoz to'xtatdi
     ERRORED = "errored"  # Tizim to'xtatdi
 
 

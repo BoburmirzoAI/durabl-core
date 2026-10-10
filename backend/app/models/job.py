@@ -117,9 +117,7 @@ class Job(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     # ------------------------------------------------------------------
 
     #: Kechiktirilgan bajarish vaqti; `None` — darhol navbatga
-    scheduled_at: Mapped[datetime | None] = mapped_column(
-        DateTimeTZ, nullable=True, index=True
-    )
+    scheduled_at: Mapped[datetime | None] = mapped_column(DateTimeTZ, nullable=True, index=True)
     #: Takrorlanuvchi job uchun cron ifodasi (croniter sintaksisi)
     cron_expression: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
@@ -154,9 +152,7 @@ class Job(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     # ------------------------------------------------------------------
 
     #: Butun zanjirni (API -> navbat -> worker -> sandbox) bog'lovchi identifikator
-    correlation_id: Mapped[str] = mapped_column(
-        String(64), nullable=False, index=True
-    )
+    correlation_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     #: Mijoz qo'ygan teglar — filter va guruhlash uchun
     tags: Mapped[list[str] | None] = mapped_column(JSONType, nullable=True)
 

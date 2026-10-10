@@ -316,9 +316,7 @@ async def test_webhook_sender_delivers_queued_delivery(
 ) -> None:
     """`WebhookSender.tick()` navbatdagi delivery'ni yetkazadi."""
     service = WebhookService(db_session)
-    await service.create(
-        user, WebhookCreate(url=HOOK_URL, events=[WebhookEvent.JOB_SUCCEEDED])
-    )
+    await service.create(user, WebhookCreate(url=HOOK_URL, events=[WebhookEvent.JOB_SUCCEEDED]))
     job = await job_factory(status=JobStatus.SUCCESS, finished_at=utcnow(), exit_code=0)
     assert await service.dispatch(job, WebhookEvent.JOB_SUCCEEDED) == 1
     await db_session.commit()

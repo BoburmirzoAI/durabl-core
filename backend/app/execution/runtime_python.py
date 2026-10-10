@@ -38,9 +38,7 @@ from app.execution.types import RunnerOutcome, SandboxSpec
 PROJECT_ROOT: Final[Path] = Path(__file__).resolve().parents[3]
 
 #: Lokal (Docker'siz) rejimda ishga tushiriladigan entrypoint.
-LOCAL_ENTRYPOINT: Final[Path] = (
-    PROJECT_ROOT / "sandbox" / "runners" / "python" / "entrypoint.py"
-)
+LOCAL_ENTRYPOINT: Final[Path] = PROJECT_ROOT / "sandbox" / "runners" / "python" / "entrypoint.py"
 
 #: Konteyner ichidagi entrypoint yo'li (`sandbox/runners/python/Dockerfile`).
 CONTAINER_ENTRYPOINT: Final[str] = "/opt/durabl/entrypoint.py"

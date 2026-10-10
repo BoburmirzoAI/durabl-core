@@ -189,9 +189,7 @@ async def test_register_api_key_job_execution_webhook_chain(
 
         # Job HAQIQATAN navbatda — bu Durabl'ning "qabul qilindi = bardoshli"
         # kafolati: javob 201 bo'lsa, job Redis'da ham, DB'da ham bor.
-        assert await fake_redis.lrange(RedisKeys.queue("normal"), 0, -1) == [
-            f"normal:{job_id}"
-        ]
+        assert await fake_redis.lrange(RedisKeys.queue("normal"), 0, -1) == [f"normal:{job_id}"]
 
         # --- 5. Worker bajaradi --------------------------------------
         assert await worker.process_one(timeout=0) is True

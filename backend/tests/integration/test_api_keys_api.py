@@ -52,9 +52,7 @@ async def create_key(
     name: str = "deploy-kaliti",
 ) -> dict[str, object]:
     """`POST /api-keys` chaqiradi va javob tanasini qaytaradi."""
-    response = await client.post(
-        f"{api_prefix}/api-keys", headers=headers, json={"name": name}
-    )
+    response = await client.post(f"{api_prefix}/api-keys", headers=headers, json={"name": name})
     assert response.status_code == 201, response.text
     return response.json()
 
@@ -95,9 +93,7 @@ async def test_created_key_authenticates(
     """Yangi kalit bilan `GET /auth/me` ishlaydi."""
     body = await create_key(client, api_prefix, auth_headers)
 
-    response = await client.get(
-        f"{api_prefix}/auth/me", headers={HEADER_API_KEY: str(body["key"])}
-    )
+    response = await client.get(f"{api_prefix}/auth/me", headers={HEADER_API_KEY: str(body["key"])})
 
     assert response.status_code == 200, response.text
     assert response.json()["id"] == str(user.id)
@@ -143,9 +139,7 @@ async def test_delete_unknown_key_not_found(
     client: httpx.AsyncClient, api_prefix: str, auth_headers: dict[str, str]
 ) -> None:
     """Mavjud bo'lmagan kalitni bekor qilish 404 beradi."""
-    response = await client.delete(
-        f"{api_prefix}/api-keys/{uuid.uuid4()}", headers=auth_headers
-    )
+    response = await client.delete(f"{api_prefix}/api-keys/{uuid.uuid4()}", headers=auth_headers)
 
     assert response.status_code == 404, response.text
     assert response.json()["error"]["code"] == "API_KEY_NOT_FOUND"
@@ -171,9 +165,7 @@ async def test_cannot_touch_other_users_key(
     listed = await client.get(f"{api_prefix}/api-keys", headers=auth_headers)
     assert listed.json()["pagination"]["total"] == 0
 
-    response = await client.delete(
-        f"{api_prefix}/api-keys/{foreign_id}", headers=auth_headers
-    )
+    response = await client.delete(f"{api_prefix}/api-keys/{foreign_id}", headers=auth_headers)
     assert response.status_code == 404, response.text
 
 
@@ -221,9 +213,7 @@ async def test_invalid_name_unprocessable(
     client: httpx.AsyncClient, api_prefix: str, auth_headers: dict[str, str]
 ) -> None:
     """Bo'sh nom 422 `VALIDATION_ERROR` beradi."""
-    response = await client.post(
-        f"{api_prefix}/api-keys", headers=auth_headers, json={"name": ""}
-    )
+    response = await client.post(f"{api_prefix}/api-keys", headers=auth_headers, json={"name": ""})
 
     assert response.status_code == 422, response.text
     assert response.json()["error"]["code"] == "VALIDATION_ERROR"

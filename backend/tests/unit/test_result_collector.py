@@ -189,9 +189,7 @@ def test_limit_oshganda_tizim_xabari_qoshiladi() -> None:
     """Kesilganini log oqimida `SYSTEM` xabari bildiradi."""
     collector = _collector(max_output_bytes=5)
     collector.feed(LogStream.STDOUT, "0123456789")
-    system_lines = [
-        entry.content for entry in collector.logs if entry.stream is LogStream.SYSTEM
-    ]
+    system_lines = [entry.content for entry in collector.logs if entry.stream is LogStream.SYSTEM]
     assert TRUNCATION_NOTICE in system_lines
 
 
@@ -354,7 +352,9 @@ def test_build_non_zero_exit() -> None:
     """`ok=False` va chiqish kodi noldan farqli -> NON_ZERO_EXIT."""
     outcome = RunnerOutcome(
         exit_code=1,
-        runner_payload=RunnerPayload(ok=False, exit_code=1, error="x teng emas", error_type="ValueError"),
+        runner_payload=RunnerPayload(
+            ok=False, exit_code=1, error="x teng emas", error_type="ValueError"
+        ),
     )
     result = _collector().build(outcome, RUNTIME, duration_ms=30)
 

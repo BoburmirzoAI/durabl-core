@@ -178,9 +178,7 @@ class DlqRepository(BaseRepository[DlqEntry]):
         if resolved is not None:
             conditions.append(DlqEntry.resolved.is_(resolved))
         if failure_reason is not None:
-            conditions.append(
-                DlqEntry.failure_reason == FailureReason(failure_reason)
-            )
+            conditions.append(DlqEntry.failure_reason == FailureReason(failure_reason))
         return conditions
 
 

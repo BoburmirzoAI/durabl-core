@@ -132,9 +132,7 @@ CODE_SAMPLES: dict[Runtime, tuple[str, ...]] = {
         "    rows = payload.get('rows', [])\n"
         "    print(json.dumps({'qatorlar': len(rows)}))\n"
         "    return {'processed': len(rows)}\n",
-        "def main(payload):\n"
-        "    name = payload.get('name', 'dunyo')\n"
-        "    return {'salom': name}\n",
+        "def main(payload):\n    name = payload.get('name', 'dunyo')\n    return {'salom': name}\n",
     ),
     Runtime.NODE: (
         "module.exports = async function main(payload) {\n"
@@ -155,7 +153,7 @@ CODE_SAMPLES: dict[Runtime, tuple[str, ...]] = {
 ERROR_SAMPLES: dict[FailureReason, tuple[str, str]] = {
     FailureReason.NON_ZERO_EXIT: (
         "KeyError: 'customer_id'",
-        'Traceback (most recent call last):\n  File "main.py", line 4\nKeyError: \'customer_id\'\n',
+        "Traceback (most recent call last):\n  File \"main.py\", line 4\nKeyError: 'customer_id'\n",
     ),
     FailureReason.TIMEOUT: (
         "Bajarish vaqti limitidan oshdi",
@@ -178,7 +176,7 @@ STATUS_MIX: tuple[tuple[JobStatus, int], ...] = (
     (JobStatus.DEAD_LETTER, 4),
     (JobStatus.RUNNING, 3),
     (JobStatus.QUEUED, 2),
-    (JobStatus.PENDING, 3),      # kechiktirilgan (`scheduled_at` kelajakda)
+    (JobStatus.PENDING, 3),  # kechiktirilgan (`scheduled_at` kelajakda)
     (JobStatus.CANCELLED, 1),
 )
 
@@ -450,9 +448,7 @@ class Seeder:
             )
         return job
 
-    def _finish_success(
-        self, job: Job, *, queued_at: datetime, payload: dict[str, Any]
-    ) -> None:
+    def _finish_success(self, job: Job, *, queued_at: datetime, payload: dict[str, Any]) -> None:
         """Muvaffaqiyatli job: 1-2 urinish, oxirgisi muvaffaqiyatli."""
         attempts = self.rng.choice((1, 1, 1, 2))  # ko'pincha birinchi urinishda
         job.retry_count = attempts - 1
@@ -555,9 +551,7 @@ class Seeder:
         job.exit_code = None if reason is FailureReason.TIMEOUT else 1
         job.stderr = stderr
         job.error = error_text
-        job.failure_reason = (
-            FailureReason.MAX_RETRIES_EXCEEDED if dead_letter else reason
-        )
+        job.failure_reason = FailureReason.MAX_RETRIES_EXCEEDED if dead_letter else reason
         job.updated_at = finished
 
         if not dead_letter:
@@ -632,8 +626,12 @@ class Seeder:
 
         sequence = 0
         self._log(
-            execution, job, LogStream.SYSTEM,
-            f"urinish #{attempt_number} boshlandi", sequence, started_at,
+            execution,
+            job,
+            LogStream.SYSTEM,
+            f"urinish #{attempt_number} boshlandi",
+            sequence,
+            started_at,
         )
         for chunk, stream in ((stdout, LogStream.STDOUT), (stderr, LogStream.STDERR)):
             for raw_line in chunk.splitlines():
@@ -641,8 +639,12 @@ class Seeder:
                 self._log(execution, job, stream, raw_line, sequence, started_at)
         sequence += 1
         self._log(
-            execution, job, LogStream.SYSTEM,
-            f"urinish #{attempt_number} tugadi: {status.value}", sequence, finished_at,
+            execution,
+            job,
+            LogStream.SYSTEM,
+            f"urinish #{attempt_number} tugadi: {status.value}",
+            sequence,
+            finished_at,
         )
 
         # Keyingi urinish qayta urinish kechikishidan keyin boshlanadi

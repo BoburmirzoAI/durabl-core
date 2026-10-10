@@ -88,9 +88,7 @@ async def test_request_id_generated(client: httpx.AsyncClient, api_prefix: str) 
     assert len(request_id) == 32  # `uuid4().hex`
 
 
-async def test_request_id_echoed_and_clipped(
-    client: httpx.AsyncClient, api_prefix: str
-) -> None:
+async def test_request_id_echoed_and_clipped(client: httpx.AsyncClient, api_prefix: str) -> None:
     """Mijoz yuborgan `X-Request-ID` saqlanadi, 64 belgidan uzun qiymat kesiladi."""
     response = await client.get(
         f"{api_prefix}/billing/plans", headers={HEADER_REQUEST_ID: "mening-izim-123"}
@@ -98,17 +96,13 @@ async def test_request_id_echoed_and_clipped(
     assert response.headers[HEADER_REQUEST_ID] == "mening-izim-123"
 
     long_id = "a" * 200
-    clipped = await client.get(
-        f"{api_prefix}/billing/plans", headers={HEADER_REQUEST_ID: long_id}
-    )
+    clipped = await client.get(f"{api_prefix}/billing/plans", headers={HEADER_REQUEST_ID: long_id})
     assert clipped.headers[HEADER_REQUEST_ID] == "a" * 64
 
 
 async def test_request_id_in_error_body(client: httpx.AsyncClient, api_prefix: str) -> None:
     """Xato javobidagi `request_id` header bilan AYNI bo'ladi."""
-    response = await client.get(
-        f"{api_prefix}/jobs", headers={HEADER_REQUEST_ID: "xato-izi-0001"}
-    )
+    response = await client.get(f"{api_prefix}/jobs", headers={HEADER_REQUEST_ID: "xato-izi-0001"})
 
     assert response.status_code == 401, response.text
     assert response.json()["request_id"] == "xato-izi-0001"
@@ -203,9 +197,7 @@ async def test_cors_preflight(client: httpx.AsyncClient, api_prefix: str) -> Non
     assert HEADER_IDEMPOTENCY_KEY in allowed
 
 
-async def test_cors_headers_on_error_response(
-    client: httpx.AsyncClient, api_prefix: str
-) -> None:
+async def test_cors_headers_on_error_response(client: httpx.AsyncClient, api_prefix: str) -> None:
     """CORS eng TASHQI qatlam: 401 javobida ham origin header'i bor."""
     response = await client.get(f"{api_prefix}/jobs", headers={"Origin": ALLOWED_ORIGIN})
 
@@ -273,9 +265,7 @@ async def test_unknown_path_error_shape(client: httpx.AsyncClient) -> None:
     assert error["code"] == "NOT_FOUND"
 
 
-async def test_method_not_allowed_error_shape(
-    client: httpx.AsyncClient, api_prefix: str
-) -> None:
+async def test_method_not_allowed_error_shape(client: httpx.AsyncClient, api_prefix: str) -> None:
     """405 ham AYNI konvertda va `Allow` header'i saqlanadi."""
     response = await client.delete(f"{api_prefix}/auth/login")
 

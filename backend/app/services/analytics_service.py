@@ -297,9 +297,7 @@ def fill_series(
     last = floor_to_interval(end, interval)
     points: list[TimeSeriesPoint] = []
     while cursor <= last and len(points) < MAX_SERIES_POINTS:
-        points.append(
-            TimeSeriesPoint(timestamp=cursor, value=float(values.get(cursor, 0.0)))
-        )
+        points.append(TimeSeriesPoint(timestamp=cursor, value=float(values.get(cursor, 0.0))))
         cursor = cursor + step
     return points
 
@@ -559,10 +557,7 @@ class AnalyticsService:
         resolved_start, resolved_end = self._resolve_range(start, end)
         step = self._resolve_interval(interval, resolved_start, resolved_end)
         scope = self._scope(user_id)
-        key = (
-            f"throughput:{scope}:{resolved_start.isoformat()}"
-            f":{resolved_end.isoformat()}:{step}"
-        )
+        key = f"throughput:{scope}:{resolved_start.isoformat()}:{resolved_end.isoformat()}:{step}"
 
         async def factory() -> dict[str, Any]:
             series = await self.jobs.throughput_series(
@@ -576,9 +571,7 @@ class AnalyticsService:
             response = TimeSeriesResponse(
                 metric="throughput",
                 interval=step,
-                points=fill_series(
-                    buckets, start=resolved_start, end=resolved_end, interval=step
-                ),
+                points=fill_series(buckets, start=resolved_start, end=resolved_end, interval=step),
                 start=resolved_start,
                 end=resolved_end,
                 #: Birlik qadamga bog'liq: `jobs/min`, `jobs/hour`, `jobs/day`.
@@ -619,10 +612,7 @@ class AnalyticsService:
         resolved_start, resolved_end = self._resolve_range(start, end)
         step = self._resolve_interval(interval, resolved_start, resolved_end)
         scope = self._scope(user_id)
-        key = (
-            f"success_rate:{scope}:{resolved_start.isoformat()}"
-            f":{resolved_end.isoformat()}:{step}"
-        )
+        key = f"success_rate:{scope}:{resolved_start.isoformat()}:{resolved_end.isoformat()}:{step}"
 
         async def factory() -> dict[str, Any]:
             stats = await self.jobs.stats_overview(
@@ -660,9 +650,7 @@ class AnalyticsService:
             cancelled = int(by_status[JobStatus.CANCELLED.value])
 
             rows = self._rows_by_bucket(series, interval=step)
-            cancelled_by_bucket = self._bucketed(
-                cancelled_series, field="total", interval=step
-            )
+            cancelled_by_bucket = self._bucketed(cancelled_series, field="total", interval=step)
             dead_by_bucket = self._bucketed(dead_series, field="total", interval=step)
             buckets = {
                 bucket: self._ratio(row["success"], row["success"] + row["failed"])
@@ -676,9 +664,7 @@ class AnalyticsService:
                 cancelled=cancelled,
                 dead_letter=dead_letter,
                 interval=step,
-                points=fill_series(
-                    buckets, start=resolved_start, end=resolved_end, interval=step
-                ),
+                points=fill_series(buckets, start=resolved_start, end=resolved_end, interval=step),
                 breakdown=self._status_breakdown(
                     rows,
                     cancelled=cancelled_by_bucket,
@@ -725,10 +711,7 @@ class AnalyticsService:
         resolved_start, resolved_end = self._resolve_range(start, end)
         step = self._resolve_interval(interval, resolved_start, resolved_end)
         scope = self._scope(user_id)
-        key = (
-            f"dlq_depth:{scope}:{resolved_start.isoformat()}"
-            f":{resolved_end.isoformat()}:{step}"
-        )
+        key = f"dlq_depth:{scope}:{resolved_start.isoformat()}:{resolved_end.isoformat()}:{step}"
 
         async def factory() -> dict[str, Any]:
             response = await self._build_dlq_series(
@@ -771,10 +754,7 @@ class AnalyticsService:
         resolved_start, resolved_end = self._resolve_range(start, end)
         step = self._resolve_interval(interval, resolved_start, resolved_end)
         scope = self._scope(user_id)
-        key = (
-            f"latency:{scope}:{resolved_start.isoformat()}"
-            f":{resolved_end.isoformat()}:{step}"
-        )
+        key = f"latency:{scope}:{resolved_start.isoformat()}:{resolved_end.isoformat()}:{step}"
 
         async def factory() -> dict[str, Any]:
             stats = await self._latency_stats(
@@ -802,10 +782,7 @@ class AnalyticsService:
         """
         resolved_start, resolved_end = self._resolve_range(start, end)
         scope = self._scope(user_id)
-        key = (
-            f"status_distribution:{scope}:{resolved_start.isoformat()}"
-            f":{resolved_end.isoformat()}"
-        )
+        key = f"status_distribution:{scope}:{resolved_start.isoformat()}:{resolved_end.isoformat()}"
 
         async def factory() -> dict[str, int]:
             stats = await self.jobs.stats_overview(
@@ -995,9 +972,7 @@ class AnalyticsService:
             func.count(DlqEntry.id).label("total"),
             func.sum(unresolved_case).label("unresolved"),
             func.sum(case((DlqEntry.failed_at >= cutoff, 1), else_=0)).label("recent"),
-            func.min(
-                case((DlqEntry.resolved.is_(False), DlqEntry.failed_at))
-            ).label("oldest"),
+            func.min(case((DlqEntry.resolved.is_(False), DlqEntry.failed_at))).label("oldest"),
         )
         if conditions:
             stmt = stmt.where(*conditions)
@@ -1061,9 +1036,7 @@ class AnalyticsService:
             jobs_24h=int(recent["total"]),
             jobs_today=int(today["total"]),
             running_jobs=int(counts.get(JobStatus.RUNNING.value, 0)),
-            jobs_by_status={
-                status.value: int(counts.get(status.value, 0)) for status in JobStatus
-            },
+            jobs_by_status={status.value: int(counts.get(status.value, 0)) for status in JobStatus},
             users_by_plan=users_by_plan,
             success_rate=float(stats["success_rate"]),
             avg_duration_ms=self._optional_number(stats.get("avg_duration_ms")),
@@ -1108,9 +1081,7 @@ class AnalyticsService:
         )
         ordering = column.asc() if str(sort_order).lower() == "asc" else column.desc()
 
-        conditions = self._user_conditions(
-            search=search, is_active=is_active, is_admin=is_admin
-        )
+        conditions = self._user_conditions(search=search, is_active=is_active, is_admin=is_admin)
         joined = plan is not None
         target_plan = PlanType(plan) if plan is not None else None
         if target_plan is not None:
@@ -1299,9 +1270,7 @@ class AnalyticsService:
         """
         span = end - start
         stats = await self.jobs.stats_overview(user_id=user_id, start=start, end=end)
-        previous = await self.jobs.stats_overview(
-            user_id=user_id, start=start - span, end=start
-        )
+        previous = await self.jobs.stats_overview(user_id=user_id, start=start - span, end=start)
         executions = await self._execution_stats(user_id=user_id, start=start, end=end)
         sample = await self._latency_sample(user_id=user_id, start=start, end=end)
         usage = await self._usage_stats(user_id)
@@ -1350,9 +1319,7 @@ class AnalyticsService:
             },
             avg_queue_wait_ms=sample.queue_wait_avg_ms,
             jobs_change_percent=(
-                None
-                if previous_total == 0
-                else self._change_percent(previous_total, current_total)
+                None if previous_total == 0 else self._change_percent(previous_total, current_total)
             ),
             queue_delayed=int(depths.get("delayed", 0)),
             queue_processing=int(depths.get("processing", 0)),
@@ -1418,9 +1385,7 @@ class AnalyticsService:
         O'lchov bo'lmasa maydonlar `None` qoladi (nolga aylantirilmaydi):
         grafik "ma'lumot yo'q" va "nol millisekund" ni ajratishi kerak.
         """
-        stats = await self.jobs.latency_percentiles(
-            user_id=user_id, start=start, end=end
-        )
+        stats = await self.jobs.latency_percentiles(user_id=user_id, start=start, end=end)
         sample = await self._latency_sample(
             user_id=user_id, start=start, end=end, interval=interval
         )
@@ -1533,14 +1498,12 @@ class AnalyticsService:
             Execution.created_at <= end,
         ]
 
-        status_stmt = select(Execution.status, func.count(Execution.id)).group_by(
-            Execution.status
-        )
+        status_stmt = select(Execution.status, func.count(Execution.id)).group_by(Execution.status)
         totals_stmt = select(
             func.count(distinct(Execution.job_id)).label("jobs"),
-            func.count(
-                distinct(case((Execution.attempt_number > 1, Execution.job_id)))
-            ).label("retried"),
+            func.count(distinct(case((Execution.attempt_number > 1, Execution.job_id)))).label(
+                "retried"
+            ),
             func.avg(Execution.duration_ms).label("avg_duration_ms"),
             func.sum(Execution.duration_ms).label("total_duration_ms"),
         )
@@ -1637,9 +1600,7 @@ class AnalyticsService:
         conditions: list[Any] = [Job.created_at >= start, Job.created_at <= end]
         if user_id is not None:
             conditions.append(Job.user_id == self._as_id(user_id))
-        stmt = (
-            select(Job.runtime, func.count(Job.id)).where(*conditions).group_by(Job.runtime)
-        )
+        stmt = select(Job.runtime, func.count(Job.id)).where(*conditions).group_by(Job.runtime)
         rows = (await self._fetch(stmt)).all()
         return {str(runtime): int(count or 0) for runtime, count in rows}
 
@@ -1711,9 +1672,7 @@ class AnalyticsService:
             .group_by(Job.user_id)
         )
         rows = (await self._fetch(stmt)).all()
-        return {
-            user_id: (int(total or 0), int(period or 0)) for user_id, total, period in rows
-        }
+        return {user_id: (int(total or 0), int(period or 0)) for user_id, total, period in rows}
 
     async def _dlq_by_user(self, user_ids: Sequence[uuid.UUID]) -> dict[uuid.UUID, int]:
         """Foydalanuvchi -> hal qilinmagan DLQ yozuvlari soni (bitta so'rov)."""
@@ -1725,9 +1684,7 @@ class AnalyticsService:
         rows = (await self._fetch(stmt)).all()
         return {user_id: int(count or 0) for user_id, count in rows}
 
-    async def _api_keys_by_user(
-        self, user_ids: Sequence[uuid.UUID]
-    ) -> dict[uuid.UUID, int]:
+    async def _api_keys_by_user(self, user_ids: Sequence[uuid.UUID]) -> dict[uuid.UUID, int]:
         """Foydalanuvchi -> AMALDAGI API kalitlar soni (bitta so'rov).
 
         "Amaldagi" = bekor qilinmagan va muddati o'tmagan —
@@ -1746,9 +1703,7 @@ class AnalyticsService:
         rows = (await self._fetch(stmt)).all()
         return {user_id: int(count or 0) for user_id, count in rows}
 
-    async def _plans_by_user(
-        self, user_ids: Sequence[uuid.UUID]
-    ) -> dict[uuid.UUID, PlanType]:
+    async def _plans_by_user(self, user_ids: Sequence[uuid.UUID]) -> dict[uuid.UUID, PlanType]:
         """Foydalanuvchi -> obuna rejasi (bitta so'rov; yozuvsizlar FREE)."""
         stmt = select(Subscription.user_id, Subscription.plan).where(
             Subscription.user_id.in_(list(user_ids))
@@ -1767,9 +1722,7 @@ class AnalyticsService:
         conditions: list[Any] = []
         if search:
             pattern = f"%{search.strip()}%"
-            conditions.append(
-                or_(User.email.ilike(pattern), User.full_name.ilike(pattern))
-            )
+            conditions.append(or_(User.email.ilike(pattern), User.full_name.ilike(pattern)))
         if is_active is not None:
             conditions.append(User.is_active.is_(is_active))
         if is_admin is not None:
@@ -2078,8 +2031,7 @@ class AnalyticsService:
         span = resolved_end - resolved_start
         if span > max_span:
             raise ValidationError(
-                f"Analitika oralig'i {settings.ANALYTICS_MAX_RANGE_DAYS} kundan "
-                "oshmasligi kerak",
+                f"Analitika oralig'i {settings.ANALYTICS_MAX_RANGE_DAYS} kundan oshmasligi kerak",
                 details={
                     "max_range_days": settings.ANALYTICS_MAX_RANGE_DAYS,
                     "requested_days": round(span.total_seconds() / 86_400, 2),
@@ -2098,8 +2050,7 @@ class AnalyticsService:
         points = expected_point_count(start, end, interval)
         if points > MAX_SERIES_POINTS:
             raise ValidationError(
-                "Vaqt qatori juda uzun — kattaroq qadam tanlang "
-                f"(`{interval}` o'rniga `day`)",
+                f"Vaqt qatori juda uzun — kattaroq qadam tanlang (`{interval}` o'rniga `day`)",
                 details={"points": points, "max_points": MAX_SERIES_POINTS},
             )
         return interval

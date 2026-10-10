@@ -261,7 +261,7 @@ def run_until(
 
 @pytest.fixture
 def advance_time(fake_redis: Redis, test_engine: Any) -> Callable[..., Awaitable[None]]:
-    """"Vaqt o'tdi" ta'sirini beradi — muddatlarni belgilangan qadar orqaga suradi.
+    """ "Vaqt o'tdi" ta'sirini beradi — muddatlarni belgilangan qadar orqaga suradi.
 
     Nima suriladi:
 

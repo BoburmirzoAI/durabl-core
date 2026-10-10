@@ -162,9 +162,7 @@ class ExecutionLogRepository(BaseRepository[ExecutionLog]):
         `after_sequence` berilsa faqat shundan KEYINGI qatorlar qaytadi
         (real vaqtda log kuzatish uchun kursor).
         """
-        conditions: list[Any] = [
-            ExecutionLog.execution_id == self._coerce_id(execution_id)
-        ]
+        conditions: list[Any] = [ExecutionLog.execution_id == self._coerce_id(execution_id)]
         if after_sequence is not None:
             conditions.append(ExecutionLog.sequence > after_sequence)
         if stream is not None:

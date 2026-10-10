@@ -150,9 +150,7 @@ async def test_create_yiqilsa_ochirish_kerak_emas(tmp_path: Any) -> None:
 
 async def test_image_topilmasa_tushunarli_xato(tmp_path: Any) -> None:
     """Image yo'q bo'lsa xabar `make sandbox-build` ni aytadi."""
-    client = FakeClient(
-        FakeContainers(FakeContainer(), create_error=ImageNotFound("yo'q"))
-    )
+    client = FakeClient(FakeContainers(FakeContainer(), create_error=ImageNotFound("yo'q")))
     manager = SandboxManager()
 
     with pytest.raises(SandboxStartupError, match="make sandbox-build"):

@@ -194,9 +194,7 @@ class SandboxService:
         """
         if not isinstance(env_vars, Mapping):
             return None
-        normalized = {
-            str(key): str(value) for key, value in env_vars.items() if value is not None
-        }
+        normalized = {str(key): str(value) for key, value in env_vars.items() if value is not None}
         return normalized or None
 
     def __repr__(self) -> str:  # pragma: no cover - debug yordamchisi

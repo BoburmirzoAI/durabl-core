@@ -222,9 +222,7 @@ def _read_seccomp_profile(path: str) -> str:
     try:
         json.loads(raw)
     except ValueError as exc:
-        raise SandboxError(
-            f"Seccomp profili yaroqli JSON emas: {profile_path} ({exc})"
-        ) from exc
+        raise SandboxError(f"Seccomp profili yaroqli JSON emas: {profile_path} ({exc})") from exc
     # Docker API bo'shliqlarga e'tibor bermaydi, lekin tanani kichraytiramiz
     return json.dumps(json.loads(raw), separators=(",", ":"))
 

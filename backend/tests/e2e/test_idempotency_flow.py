@@ -260,9 +260,7 @@ async def test_same_key_for_different_users_is_independent(
     assert await count_jobs() == 2
 
     # Begona job ko'rinmaydi (IDOR himoyasi) — kalit bir xil bo'lsa ham.
-    foreign = await client.get(
-        f"{api_prefix}/jobs/{theirs.json()['id']}", headers=auth_headers
-    )
+    foreign = await client.get(f"{api_prefix}/jobs/{theirs.json()['id']}", headers=auth_headers)
     assert foreign.status_code == 404
 
 

@@ -206,9 +206,7 @@ async def test_users_list_and_filters(
     )
     assert [item["id"] for item in by_search.json()["items"]] == [str(user.id)]
 
-    only_admins = await client.get(
-        f"{api_prefix}/admin/users?is_admin=true", headers=admin_headers
-    )
+    only_admins = await client.get(f"{api_prefix}/admin/users?is_admin=true", headers=admin_headers)
     assert [item["id"] for item in only_admins.json()["items"]] == [str(admin_user.id)]
 
     by_plan = await client.get(
@@ -216,9 +214,7 @@ async def test_users_list_and_filters(
     )
     assert by_plan.json()["pagination"]["total"] == 2
 
-    inactive = await client.get(
-        f"{api_prefix}/admin/users?is_active=false", headers=admin_headers
-    )
+    inactive = await client.get(f"{api_prefix}/admin/users?is_active=false", headers=admin_headers)
     assert inactive.json()["pagination"]["total"] == 0
 
 

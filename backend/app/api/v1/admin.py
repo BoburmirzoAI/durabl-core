@@ -149,7 +149,9 @@ async def list_admin_users(
     is_admin: Annotated[bool | None, Query(description="Faqat adminlar/oddiylar")] = None,
     sort_by: Annotated[
         str,
-        Query(description="Tartiblash ustuni: `created_at`, `updated_at`, `email`, `last_login_at`"),
+        Query(
+            description="Tartiblash ustuni: `created_at`, `updated_at`, `email`, `last_login_at`"
+        ),
     ] = "created_at",
     sort_order: SortOrder = "desc",
 ) -> PaginatedResponse[AdminUserRead]:

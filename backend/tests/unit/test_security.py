@@ -247,9 +247,10 @@ def test_generate_api_key_shakli() -> None:
     assert generated.raw.startswith(settings.API_KEY_PREFIX)
     assert len(generated.raw) > 40
     assert generated.last_four == generated.raw[-4:]
-    assert generated.key_prefix == generated.raw[
-        : len(settings.API_KEY_PREFIX) + API_KEY_DISPLAY_PREFIX_LENGTH
-    ]
+    assert (
+        generated.key_prefix
+        == generated.raw[: len(settings.API_KEY_PREFIX) + API_KEY_DISPLAY_PREFIX_LENGTH]
+    )
 
 
 def test_generate_api_key_takrorlanmaydi() -> None:
@@ -398,7 +399,9 @@ def test_constant_time_compare_teng_qiymatlar() -> None:
     assert constant_time_compare("durabl", "durabl") is True
 
 
-@pytest.mark.parametrize(("left", "right"), [("a", "b"), ("abc", "abd"), ("abc", "abcd"), ("", "a")])
+@pytest.mark.parametrize(
+    ("left", "right"), [("a", "b"), ("abc", "abd"), ("abc", "abcd"), ("", "a")]
+)
 def test_constant_time_compare_turli_qiymatlar(left: str, right: str) -> None:
     """Farqli matnlar (uzunligi boshqa bo'lsa ham) `False` beradi."""
     assert constant_time_compare(left, right) is False

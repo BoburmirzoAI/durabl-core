@@ -212,8 +212,7 @@ async def test_handle_crash_restarts_until_limit(pool: WorkerPool) -> None:
     """Qulagan worker `MAX_RESTARTS` gacha qayta ishga tushiriladi, keyin pool to'xtaydi."""
     limit = worker_pool_module.MAX_RESTARTS
     decisions = [
-        await pool._handle_crash(0, "w-0", RuntimeError("qulash"))
-        for _ in range(limit + 1)
+        await pool._handle_crash(0, "w-0", RuntimeError("qulash")) for _ in range(limit + 1)
     ]
 
     # Chegaraga yetguncha hammasi `True` (qayta ishga tushiriladi).

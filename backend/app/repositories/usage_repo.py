@@ -87,9 +87,7 @@ class UsageRepository(BaseRepository[UsageRecord]):
         result = await self._execute(stmt)
         return list(result.scalars().all())
 
-    async def current_period(
-        self, user_id: uuid.UUID | str
-    ) -> UsageRecord:
+    async def current_period(self, user_id: uuid.UUID | str) -> UsageRecord:
         """Joriy oy yozuvi; yo'q bo'lsa yaratiladi (nol hisoblagichlar bilan).
 
         Kvota tekshiruvi (`check_quota`) va `UsageSummary` har doim obyekt

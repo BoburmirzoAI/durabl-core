@@ -156,9 +156,7 @@ async def test_execution_record_created(
     job_id = await submit(client, api_prefix, auth_headers, payload={"args": [2]})
     await run_one(db_session, worker_id="exec-worker")
 
-    response = await client.get(
-        f"{api_prefix}/executions?job_id={job_id}", headers=auth_headers
-    )
+    response = await client.get(f"{api_prefix}/executions?job_id={job_id}", headers=auth_headers)
 
     assert response.status_code == 200, response.text
     items = response.json()["items"]
@@ -221,9 +219,7 @@ async def test_retries_exhausted_go_to_dlq(
     assert items[0]["resolved"] is False
     assert "ataylab yiqildi" in items[0]["last_error"]
 
-    executions = await client.get(
-        f"{api_prefix}/executions?job_id={job_id}", headers=auth_headers
-    )
+    executions = await client.get(f"{api_prefix}/executions?job_id={job_id}", headers=auth_headers)
     assert executions.json()["pagination"]["total"] == 2
 
 
@@ -250,9 +246,7 @@ async def test_timeout_marks_job_failed(
     assert body["status"] == JobStatus.DEAD_LETTER.value
     assert body["failure_reason"] == FailureReason.TIMEOUT.value
 
-    executions = await client.get(
-        f"{api_prefix}/executions?job_id={job_id}", headers=auth_headers
-    )
+    executions = await client.get(f"{api_prefix}/executions?job_id={job_id}", headers=auth_headers)
     assert executions.json()["items"][0]["status"] == ExecutionStatus.TIMEOUT.value
 
 
@@ -278,9 +272,7 @@ async def test_cancel_signal_stops_execution(
     status = await client.get(f"{api_prefix}/jobs/{job_id}/status", headers=auth_headers)
     assert status.json()["status"] == JobStatus.CANCELLED.value
 
-    executions = await client.get(
-        f"{api_prefix}/executions?job_id={job_id}", headers=auth_headers
-    )
+    executions = await client.get(f"{api_prefix}/executions?job_id={job_id}", headers=auth_headers)
     assert executions.json()["items"][0]["status"] == ExecutionStatus.CANCELLED.value
 
 
@@ -298,9 +290,7 @@ async def test_cancelled_job_is_skipped_by_worker(
     # `cancel()` a'zoni navbatdan olib tashlaydi, shuning uchun navbat BO'SH.
     assert await run_one(db_session, worker_id="skip-worker") is False
 
-    executions = await client.get(
-        f"{api_prefix}/executions?job_id={job_id}", headers=auth_headers
-    )
+    executions = await client.get(f"{api_prefix}/executions?job_id={job_id}", headers=auth_headers)
     assert executions.json()["pagination"]["total"] == 0
 
 

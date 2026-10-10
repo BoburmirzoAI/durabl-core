@@ -1225,7 +1225,9 @@ class ReliabilityService:
         workers: list[dict[str, Any]] = []
         for worker_id in worker_ids:
             record = records[worker_id]
-            workers.append(self._present_worker(worker_id, record, alive=alive.get(worker_id, False)))
+            workers.append(
+                self._present_worker(worker_id, record, alive=alive.get(worker_id, False))
+            )
 
         metrics.set_active_workers(sum(1 for row in workers if row["is_alive"]))
         return workers
@@ -1297,9 +1299,7 @@ class ReliabilityService:
         qilishi mumkin.
         """
         ttl = (
-            settings.MAX_TIMEOUT_SECONDS
-            + settings.LEASE_TTL_SECONDS
-            + CANCEL_SIGNAL_GRACE_SECONDS
+            settings.MAX_TIMEOUT_SECONDS + settings.LEASE_TTL_SECONDS + CANCEL_SIGNAL_GRACE_SECONDS
         )
         try:
             await self.redis.set(
@@ -1708,8 +1708,7 @@ class ReliabilityService:
             return dict.fromkeys(worker_ids, True)
 
         return {
-            worker_id: bool(result)
-            for worker_id, result in zip(worker_ids, results, strict=False)
+            worker_id: bool(result) for worker_id, result in zip(worker_ids, results, strict=False)
         }
 
     def _present_worker(

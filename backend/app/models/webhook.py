@@ -69,9 +69,7 @@ class Webhook(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         Boolean, default=True, server_default=true(), nullable=False
     )
     #: Oxirgi marta hodisa yuborilgan vaqt
-    last_triggered_at: Mapped[datetime | None] = mapped_column(
-        DateTimeTZ, nullable=True
-    )
+    last_triggered_at: Mapped[datetime | None] = mapped_column(DateTimeTZ, nullable=True)
     #: Ketma-ket muvaffaqiyatsizliklar soni (muvaffaqiyatda 0 ga qaytadi)
     consecutive_failures: Mapped[int] = mapped_column(
         Integer, default=0, server_default=text("0"), nullable=False
@@ -83,9 +81,7 @@ class Webhook(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     # Bog'lanishlar
     # ------------------------------------------------------------------
 
-    user: Mapped[User] = relationship(
-        "User", back_populates="webhooks", lazy="raise"
-    )
+    user: Mapped[User] = relationship("User", back_populates="webhooks", lazy="raise")
     deliveries: Mapped[list[WebhookDelivery]] = relationship(
         "WebhookDelivery",
         back_populates="webhook",

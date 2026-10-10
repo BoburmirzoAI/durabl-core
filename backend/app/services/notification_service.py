@@ -95,9 +95,9 @@ class AlertLevel(StrEnum):
 #: ham tushunadi, lekin hex kod boshqa qabul qiluvchilar (Mattermost,
 #: Discord'ning Slack-mos endpointi, o'z panelimiz) uchun ham bir xil ishlaydi.
 LEVEL_COLORS: Final[dict[str, str]] = {
-    AlertLevel.INFO.value: "#2e7d32",      # yashil
-    AlertLevel.WARNING.value: "#ed6c02",   # to'q sariq
-    AlertLevel.ERROR.value: "#d32f2f",     # qizil
+    AlertLevel.INFO.value: "#2e7d32",  # yashil
+    AlertLevel.WARNING.value: "#ed6c02",  # to'q sariq
+    AlertLevel.ERROR.value: "#d32f2f",  # qizil
     AlertLevel.CRITICAL.value: "#6a1b9a",  # binafsha (qizildan ham jiddiy)
 }
 
@@ -325,11 +325,7 @@ class NotificationService:
         qolmasligi uchun.
         """
         threshold = settings.DLQ_ALERT_THRESHOLD
-        level = (
-            AlertLevel.CRITICAL.value
-            if depth >= threshold * 2
-            else AlertLevel.ERROR.value
-        )
+        level = AlertLevel.CRITICAL.value if depth >= threshold * 2 else AlertLevel.ERROR.value
         context: dict[str, Any] = {"depth": depth, "threshold": threshold}
         scope = "global"
         if user_id is not None:
@@ -365,9 +361,7 @@ class NotificationService:
         context: dict[str, Any] = {"worker_id": worker_id}
         if last_heartbeat is not None:
             context["last_heartbeat"] = isoformat(last_heartbeat)
-            context["silent_seconds"] = round(
-                (utcnow() - last_heartbeat).total_seconds(), 1
-            )
+            context["silent_seconds"] = round((utcnow() - last_heartbeat).total_seconds(), 1)
 
         await self.alert(
             "Worker javob bermayapti",

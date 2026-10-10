@@ -42,9 +42,7 @@ class BaseRepository(Generic[ModelT]):
 
     def __init__(self, session: AsyncSession) -> None:
         if not hasattr(self, "model"):
-            raise TypeError(
-                f"{type(self).__name__} klassida `model` atributi belgilanmagan"
-            )
+            raise TypeError(f"{type(self).__name__} klassida `model` atributi belgilanmagan")
         self.session = session
 
     # ------------------------------------------------------------------
@@ -123,9 +121,7 @@ class BaseRepository(Generic[ModelT]):
 
     async def count(self, **filters: Any) -> int:
         """Filtrga mos yozuvlar soni."""
-        stmt = self._apply_filters(
-            select(func.count()).select_from(self.model), filters
-        )
+        stmt = self._apply_filters(select(func.count()).select_from(self.model), filters)
         result = await self._execute(stmt)
         return int(result.scalar_one() or 0)
 

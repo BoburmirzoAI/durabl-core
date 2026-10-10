@@ -69,17 +69,13 @@ class UsageRecord(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         Float, default=0.0, server_default=text("0"), nullable=False
     )
     #: Yozuv oxirgi yangilangan vaqt
-    recorded_at: Mapped[datetime] = mapped_column(
-        DateTimeTZ, default=utcnow, nullable=False
-    )
+    recorded_at: Mapped[datetime] = mapped_column(DateTimeTZ, default=utcnow, nullable=False)
 
     # ------------------------------------------------------------------
     # Bog'lanishlar
     # ------------------------------------------------------------------
 
-    user: Mapped[User] = relationship(
-        "User", back_populates="usage_records", lazy="raise"
-    )
+    user: Mapped[User] = relationship("User", back_populates="usage_records", lazy="raise")
 
     # ------------------------------------------------------------------
     # Yordamchi xossalar

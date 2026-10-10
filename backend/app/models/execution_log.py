@@ -73,9 +73,7 @@ class ExecutionLog(UUIDPrimaryKeyMixin, Base):
     # Bog'lanishlar
     # ------------------------------------------------------------------
 
-    execution: Mapped[Execution] = relationship(
-        "Execution", back_populates="logs", lazy="raise"
-    )
+    execution: Mapped[Execution] = relationship("Execution", back_populates="logs", lazy="raise")
     job: Mapped[Job] = relationship("Job", back_populates="logs", lazy="raise")
 
     # ------------------------------------------------------------------

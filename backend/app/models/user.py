@@ -45,9 +45,7 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     # ------------------------------------------------------------------
 
     #: Email — login identifikatori (RFC bo'yicha maksimal 320 belgi)
-    email: Mapped[str] = mapped_column(
-        String(320), unique=True, index=True, nullable=False
-    )
+    email: Mapped[str] = mapped_column(String(320), unique=True, index=True, nullable=False)
     #: bcrypt hash (`app.utils.security.hash_password`) — xom parol saqlanmaydi
     hashed_password: Mapped[str] = mapped_column(String(128), nullable=False)
     #: To'liq ism — ixtiyoriy, UI'da ko'rsatish uchun
@@ -81,9 +79,7 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     #: `two_factor_enabled_at` javob beradi.
     totp_secret: Mapped[str | None] = mapped_column(String(64), nullable=True)
     #: 2FA qachon YOQILGAN (tasdiqlangan). Yagona haqiqat manbasi.
-    two_factor_enabled_at: Mapped[datetime | None] = mapped_column(
-        DateTimeTZ, nullable=True
-    )
+    two_factor_enabled_at: Mapped[datetime | None] = mapped_column(DateTimeTZ, nullable=True)
 
     # ------------------------------------------------------------------
     # Bog'lanishlar

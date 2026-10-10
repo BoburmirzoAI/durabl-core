@@ -214,9 +214,7 @@ class JobRepository(BaseRepository[Job]):
         )
         if search:
             pattern = f"%{search.strip()}%"
-            conditions.append(
-                or_(Job.code.ilike(pattern), Job.correlation_id.ilike(pattern))
-            )
+            conditions.append(or_(Job.code.ilike(pattern), Job.correlation_id.ilike(pattern)))
         if failure_reason is not None:
             reasons = (
                 [failure_reason]
@@ -557,11 +555,7 @@ class JobRepository(BaseRepository[Job]):
         keys: Sequence[str],
     ) -> dict[str, Any]:
         """SQLite yo'li — qiymatlar o'qiladi va kesimlar Python tomonida hisoblanadi."""
-        stmt = (
-            select(Job.duration_ms)
-            .where(*conditions)
-            .order_by(Job.duration_ms.asc())
-        )
+        stmt = select(Job.duration_ms).where(*conditions).order_by(Job.duration_ms.asc())
         result = await self._execute(stmt)
         values = [int(value) for value in result.scalars().all() if value is not None]
 
@@ -625,9 +619,7 @@ class JobRepository(BaseRepository[Job]):
         if priority_condition is not None:
             conditions.append(priority_condition)
 
-        reason_condition = self._enum_condition(
-            Job.failure_reason, FailureReason, failure_reason
-        )
+        reason_condition = self._enum_condition(Job.failure_reason, FailureReason, failure_reason)
         if reason_condition is not None:
             conditions.append(reason_condition)
 

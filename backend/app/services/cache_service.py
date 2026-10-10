@@ -169,9 +169,7 @@ class CacheService:
         try:
             payload = dump_json(value)
         except ValidationError as exc:
-            logger.warning(
-                "Cache qiymati JSON'ga aylanmadi", namespace=namespace, error=str(exc)
-            )
+            logger.warning("Cache qiymati JSON'ga aylanmadi", namespace=namespace, error=str(exc))
             return
         try:
             await self.redis.set(self._key(namespace, key), payload, ex=self._ttl(ttl))
@@ -332,9 +330,7 @@ class CacheService:
         lekin ishlaydigan yo'l.
         """
         try:
-            return bool(
-                await self.redis.set(lock_key, "1", nx=True, ex=STAMPEDE_LOCK_TTL_SECONDS)
-            )
+            return bool(await self.redis.set(lock_key, "1", nx=True, ex=STAMPEDE_LOCK_TTL_SECONDS))
         except RedisError as exc:
             logger.warning("Cache lock olinmadi", lock=lock_key, error=str(exc))
             return False

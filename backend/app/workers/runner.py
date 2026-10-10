@@ -453,9 +453,7 @@ class PeriodicWorker(ABC):
         """
         ttl = max(1, int(self.lock_ttl))
         try:
-            acquired = await self.redis.set(
-                self.lock_key, self._lock_token, nx=True, ex=ttl
-            )
+            acquired = await self.redis.set(self.lock_key, self._lock_token, nx=True, ex=ttl)
         except RedisError as exc:
             logger.warning(
                 "worker.lock_error",

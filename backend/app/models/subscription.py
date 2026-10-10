@@ -58,9 +58,7 @@ class Subscription(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         nullable=False,
     )
     #: Obuna boshlangan vaqt
-    started_at: Mapped[datetime] = mapped_column(
-        DateTimeTZ, default=utcnow, nullable=False
-    )
+    started_at: Mapped[datetime] = mapped_column(DateTimeTZ, default=utcnow, nullable=False)
     #: Obuna tugash vaqti; `None` — muddatsiz (masalan FREE reja)
     expires_at: Mapped[datetime | None] = mapped_column(DateTimeTZ, nullable=True)
 
@@ -74,17 +72,13 @@ class Subscription(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     #: Mijoz bekor qilgan vaqt (muddat oxirigacha xizmat davom etadi)
     cancelled_at: Mapped[datetime | None] = mapped_column(DateTimeTZ, nullable=True)
     #: Tashqi to'lov tizimidagi mijoz identifikatori
-    external_customer_id: Mapped[str | None] = mapped_column(
-        String(128), nullable=True
-    )
+    external_customer_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
 
     # ------------------------------------------------------------------
     # Bog'lanishlar
     # ------------------------------------------------------------------
 
-    user: Mapped[User] = relationship(
-        "User", back_populates="subscription", lazy="raise"
-    )
+    user: Mapped[User] = relationship("User", back_populates="subscription", lazy="raise")
 
     # ------------------------------------------------------------------
     # Yordamchi xossalar

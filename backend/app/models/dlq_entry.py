@@ -110,9 +110,7 @@ class DlqEntry(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     # Bog'lanishlar
     # ------------------------------------------------------------------
 
-    job: Mapped[Job] = relationship(
-        "Job", back_populates="dlq_entry", lazy="raise"
-    )
+    job: Mapped[Job] = relationship("Job", back_populates="dlq_entry", lazy="raise")
     user: Mapped[User] = relationship(
         "User",
         back_populates="dlq_entries",

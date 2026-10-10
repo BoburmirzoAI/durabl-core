@@ -33,8 +33,7 @@ def _build_client() -> Redis:
             import fakeredis.aioredis
         except ImportError as exc:  # pragma: no cover
             raise QueueError(
-                "REDIS_FAKE=True, lekin `fakeredis` o'rnatilmagan "
-                "(`pip install fakeredis`)"
+                "REDIS_FAKE=True, lekin `fakeredis` o'rnatilmagan (`pip install fakeredis`)"
             ) from exc
         logger.warning("fakeredis ishlatilmoqda — faqat test muhiti uchun")
         return fakeredis.aioredis.FakeRedis(decode_responses=True)

@@ -55,9 +55,7 @@ class WebhookDeliveryRepository(BaseRepository[WebhookDelivery]):
         """
         condition = WebhookDelivery.webhook_id == self._coerce_id(webhook_id)
 
-        total_stmt = (
-            select(func.count()).select_from(WebhookDelivery).where(condition)
-        )
+        total_stmt = select(func.count()).select_from(WebhookDelivery).where(condition)
         total_result = await self._execute(total_stmt)
         total = int(total_result.scalar_one() or 0)
 
@@ -100,13 +98,9 @@ class WebhookDeliveryRepository(BaseRepository[WebhookDelivery]):
         webhook_id: uuid.UUID | str | None = None,
     ) -> dict[str, int]:
         """Holatlar kesimidagi yuborishlar soni (monitoring uchun)."""
-        stmt = select(WebhookDelivery.status, func.count()).group_by(
-            WebhookDelivery.status
-        )
+        stmt = select(WebhookDelivery.status, func.count()).group_by(WebhookDelivery.status)
         if webhook_id is not None:
-            stmt = stmt.where(
-                WebhookDelivery.webhook_id == self._coerce_id(webhook_id)
-            )
+            stmt = stmt.where(WebhookDelivery.webhook_id == self._coerce_id(webhook_id))
         result = await self._execute(stmt)
         counts: dict[str, int] = {status.value: 0 for status in DeliveryStatus}
         for status, amount in result.all():

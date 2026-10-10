@@ -66,13 +66,9 @@ class Execution(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     # ------------------------------------------------------------------
 
     #: Urinishni bajargan worker identifikatori
-    worker_id: Mapped[str | None] = mapped_column(
-        String(128), nullable=True, index=True
-    )
+    worker_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
     #: Lease qachon tugaydi — shundan keyin job boshqa worker'ga o'tadi
-    lease_expires_at: Mapped[datetime | None] = mapped_column(
-        DateTimeTZ, nullable=True, index=True
-    )
+    lease_expires_at: Mapped[datetime | None] = mapped_column(DateTimeTZ, nullable=True, index=True)
 
     # ------------------------------------------------------------------
     # Holat va vaqtlar
@@ -122,9 +118,7 @@ class Execution(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     # Bog'lanishlar
     # ------------------------------------------------------------------
 
-    job: Mapped[Job] = relationship(
-        "Job", back_populates="executions", lazy="raise"
-    )
+    job: Mapped[Job] = relationship("Job", back_populates="executions", lazy="raise")
     logs: Mapped[list[ExecutionLog]] = relationship(
         "ExecutionLog",
         back_populates="execution",

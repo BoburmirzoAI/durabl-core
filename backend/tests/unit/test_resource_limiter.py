@@ -240,9 +240,7 @@ def test_to_docker_kwargs_auto_remove_ochirilgan() -> None:
 
 def test_to_docker_kwargs_yorliqlari() -> None:
     """Yorliqlar orphan tozalash uchun to'liq bo'ladi."""
-    kwargs = to_docker_kwargs(
-        make_limits(), runtime=RUNTIME, job_id="job-1", attempt_number=2
-    )
+    kwargs = to_docker_kwargs(make_limits(), runtime=RUNTIME, job_id="job-1", attempt_number=2)
     labels = kwargs["labels"]
     assert labels[LABEL_MANAGED] == LABEL_MANAGED_VALUE
     assert labels[LABEL_JOB_ID] == "job-1"

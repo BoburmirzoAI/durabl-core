@@ -79,8 +79,7 @@ RedisDep = Annotated[Redis, Depends(get_redis_dependency)]
 _bearer_scheme = HTTPBearer(
     scheme_name="JWT",
     description=(
-        "`Authorization: Bearer <access_token>`. API kalitni ham shu yerda "
-        "yuborish mumkin."
+        "`Authorization: Bearer <access_token>`. API kalitni ham shu yerda yuborish mumkin."
     ),
     auto_error=False,
 )

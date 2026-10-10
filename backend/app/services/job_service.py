@@ -797,11 +797,7 @@ class JobService:
         """`RUNNING` job uchun Redis'ga bekor qilish signalini yozadi."""
         # Signal job bajarilib bo'lgandan keyin ham qisqa vaqt yashashi kerak:
         # worker uni keyingi heartbeat/lease oynasida o'qiydi.
-        ttl = (
-            int(job.timeout_seconds)
-            + settings.LEASE_TTL_SECONDS
-            + CANCEL_SIGNAL_GRACE_SECONDS
-        )
+        ttl = int(job.timeout_seconds) + settings.LEASE_TTL_SECONDS + CANCEL_SIGNAL_GRACE_SECONDS
         try:
             await self.redis.set(
                 RedisKeys.cache(CANCEL_NAMESPACE, job.id),

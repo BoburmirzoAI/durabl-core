@@ -49,9 +49,7 @@ if TYPE_CHECKING:  # pragma: no cover - faqat tur tekshiruvi
 pytestmark = pytest.mark.integration
 
 
-async def add_execution(
-    session: AsyncSession, job: Job, **overrides: object
-) -> Execution:
+async def add_execution(session: AsyncSession, job: Job, **overrides: object) -> Execution:
     """Urinish yozuvini DB'ga yozadi va commit qiladi."""
     execution = make_execution(job_id=job.id, **overrides)  # type: ignore[arg-type]
     session.add(execution)
@@ -96,9 +94,7 @@ async def test_filter_by_job_id(
     wanted = await add_execution(db_session, first)
     await add_execution(db_session, second)
 
-    response = await client.get(
-        f"{api_prefix}/executions?job_id={first.id}", headers=auth_headers
-    )
+    response = await client.get(f"{api_prefix}/executions?job_id={first.id}", headers=auth_headers)
 
     assert response.status_code == 200, response.text
     assert [item["id"] for item in response.json()["items"]] == [str(wanted.id)]
@@ -147,9 +143,7 @@ async def test_filter_by_worker_id(
     mine = await add_execution(db_session, job, attempt_number=1, worker_id="worker-a")
     await add_execution(db_session, job, attempt_number=2, worker_id="worker-b")
 
-    response = await client.get(
-        f"{api_prefix}/executions?worker_id=worker-a", headers=auth_headers
-    )
+    response = await client.get(f"{api_prefix}/executions?worker_id=worker-a", headers=auth_headers)
 
     assert [item["id"] for item in response.json()["items"]] == [str(mine.id)]
 
@@ -194,9 +188,7 @@ async def test_get_single_execution(
         db_session, job, status=ExecutionStatus.FAILED, error_message="xato matni"
     )
 
-    response = await client.get(
-        f"{api_prefix}/executions/{execution.id}", headers=auth_headers
-    )
+    response = await client.get(f"{api_prefix}/executions/{execution.id}", headers=auth_headers)
 
     assert response.status_code == 200, response.text
     body = response.json()
@@ -272,15 +264,11 @@ async def test_other_users_execution_not_found(
     listed = await client.get(f"{api_prefix}/executions", headers=auth_headers)
     assert listed.json()["pagination"]["total"] == 0
 
-    single = await client.get(
-        f"{api_prefix}/executions/{foreign_id}", headers=auth_headers
-    )
+    single = await client.get(f"{api_prefix}/executions/{foreign_id}", headers=auth_headers)
     assert single.status_code == 404, single.text
     assert single.json()["error"]["code"] == "EXECUTION_NOT_FOUND"
 
-    logs = await client.get(
-        f"{api_prefix}/executions/{foreign_id}/logs", headers=auth_headers
-    )
+    logs = await client.get(f"{api_prefix}/executions/{foreign_id}/logs", headers=auth_headers)
     assert logs.status_code == 404, logs.text
 
 
@@ -288,9 +276,7 @@ async def test_unknown_execution_not_found(
     client: httpx.AsyncClient, api_prefix: str, auth_headers: dict[str, str]
 ) -> None:
     """Mavjud bo'lmagan urinish 404 beradi."""
-    response = await client.get(
-        f"{api_prefix}/executions/{uuid.uuid4()}", headers=auth_headers
-    )
+    response = await client.get(f"{api_prefix}/executions/{uuid.uuid4()}", headers=auth_headers)
 
     assert response.status_code == 404, response.text
     assert response.json()["error"]["code"] == "EXECUTION_NOT_FOUND"

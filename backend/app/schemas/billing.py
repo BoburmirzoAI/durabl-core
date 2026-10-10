@@ -93,12 +93,8 @@ class PlanInfo(ORMSchema):
     features: list[str] = Field(
         default_factory=list, description="Marketing uchun asosiy imkoniyatlar ro'yxati"
     )
-    is_popular: bool = Field(
-        default=False, description="Narx jadvalida ajratib ko'rsatilsinmi"
-    )
-    is_current: bool = Field(
-        default=False, description="Foydalanuvchining joriy rejasimi"
-    )
+    is_popular: bool = Field(default=False, description="Narx jadvalida ajratib ko'rsatilsinmi")
+    is_current: bool = Field(default=False, description="Foydalanuvchining joriy rejasimi")
 
     @classmethod
     def build(

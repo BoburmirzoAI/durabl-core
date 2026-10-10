@@ -83,11 +83,7 @@ class WebhookRepository(BaseRepository[Webhook]):
         """
         event_value = WebhookEvent(event).value
         candidates = await self.list_for_user(user_id, active_only=True)
-        return [
-            webhook
-            for webhook in candidates
-            if event_value in (webhook.events or [])
-        ]
+        return [webhook for webhook in candidates if event_value in (webhook.events or [])]
 
     async def count_for_user(
         self,
@@ -113,9 +109,7 @@ class WebhookRepository(BaseRepository[Webhook]):
         active_only: bool,
     ) -> list[ColumnElement[Any]]:
         """`list_for_user` va `count_for_user` uchun umumiy WHERE shartlari."""
-        conditions: list[ColumnElement[Any]] = [
-            Webhook.user_id == self._coerce_id(user_id)
-        ]
+        conditions: list[ColumnElement[Any]] = [Webhook.user_id == self._coerce_id(user_id)]
         if active_only:
             conditions.append(Webhook.is_active.is_(True))
             conditions.append(Webhook.disabled_at.is_(None))

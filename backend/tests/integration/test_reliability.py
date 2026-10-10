@@ -308,9 +308,7 @@ async def test_move_to_dlq_is_idempotent(
     assert await service.dlq.depth() == 1
 
 
-async def test_worker_registry_lifecycle(
-    db_session: AsyncSession, fake_redis: Redis
-) -> None:
+async def test_worker_registry_lifecycle(db_session: AsyncSession, fake_redis: Redis) -> None:
     """Worker reestri: ro'yxatdan o'tish -> heartbeat -> o'chirish."""
     service = ReliabilityService(db_session)
 
@@ -342,7 +340,7 @@ async def test_prune_dead_workers(db_session: AsyncSession, fake_redis: Redis) -
 
     # `WORKER_B` quladi: TTL'li tiriklik kaliti yo'qoldi (HASH yozuvi qoldi).
     await fake_redis.delete(RedisKeys.worker_heartbeat(WORKER_B))
-    dead = (await service.list_workers())
+    dead = await service.list_workers()
     assert {row["worker_id"]: row["state"] for row in dead}[WORKER_B] is WorkerState.DEAD
 
     assert await service.prune_dead_workers() == 1

@@ -280,9 +280,7 @@ async def test_change_password_wrong_current_unauthorized(
     assert response.status_code == 401, response.text
 
 
-async def test_deactivate_account_blocks_login(
-    client: httpx.AsyncClient, api_prefix: str
-) -> None:
+async def test_deactivate_account_blocks_login(client: httpx.AsyncClient, api_prefix: str) -> None:
     """`DELETE /auth/me` hisobni faolsizlantiradi; keyin login 403 beradi."""
     email, password = await register_user(client, api_prefix)
     tokens = await login(client, api_prefix, email, password)

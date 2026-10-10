@@ -50,9 +50,7 @@ class ApiKey(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     # ------------------------------------------------------------------
 
     #: SHA-256 hex digest (64 belgi) — autentifikatsiyada shu bo'yicha qidiriladi
-    key_hash: Mapped[str] = mapped_column(
-        String(64), unique=True, index=True, nullable=False
-    )
+    key_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True, nullable=False)
     #: Mijoz ko'radigan prefiks (masalan `durabl_`) — niqoblangan ko'rinish uchun
     key_prefix: Mapped[str] = mapped_column(String(32), nullable=False)
     #: Kalitning oxirgi 4 belgisi — foydalanuvchi kalitni tanib olishi uchun
@@ -60,9 +58,7 @@ class ApiKey(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     #: Mijoz bergan nom ("CI pipeline", "Lokal test" ...)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     #: Ruxsat doiralari ro'yxati; bo'sh ro'yxat — barcha standart huquqlar
-    scopes: Mapped[list[str]] = mapped_column(
-        JSONType, default=list, nullable=False
-    )
+    scopes: Mapped[list[str]] = mapped_column(JSONType, default=list, nullable=False)
 
     # ------------------------------------------------------------------
     # Hayot sikli
@@ -79,9 +75,7 @@ class ApiKey(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     # Bog'lanishlar
     # ------------------------------------------------------------------
 
-    user: Mapped[User] = relationship(
-        "User", back_populates="api_keys", lazy="raise"
-    )
+    user: Mapped[User] = relationship("User", back_populates="api_keys", lazy="raise")
 
     # ------------------------------------------------------------------
     # Yordamchi xossalar

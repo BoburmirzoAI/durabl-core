@@ -721,14 +721,10 @@ class ExecutionService:
 
         reason = error.failure_reason or FailureReason.INTERNAL_ERROR
         status = (
-            ExecutionStatus.TIMEOUT
-            if reason is FailureReason.TIMEOUT
-            else ExecutionStatus.FAILED
+            ExecutionStatus.TIMEOUT if reason is FailureReason.TIMEOUT else ExecutionStatus.FAILED
         )
 
-        fields: dict[str, Any] = (
-            dict(result.to_execution_fields()) if result is not None else {}
-        )
+        fields: dict[str, Any] = dict(result.to_execution_fields()) if result is not None else {}
         fields.update(
             status=status,
             failure_reason=reason,
