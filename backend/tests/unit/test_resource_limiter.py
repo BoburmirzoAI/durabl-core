@@ -440,6 +440,57 @@ def test_to_rlimits_as_faqat_linuxda() -> None:
         assert posix_resource.RLIMIT_AS not in pairs
 
 
+def test_to_rlimits_NPROC_QOYILMAYDI() -> None:
+    """`RLIMIT_NPROC` hostdagi cheklovlarga HECH QACHON kirmaydi.
+
+    ## Nega bu test bor
+
+    `RLIMIT_NPROC` — PROTSESS bo'yicha emas, UID bo'yicha limit: o'sha
+    foydalanuvchining barcha vazifalari (thread'lar ham) hisoblanadi.
+    Hostda uid dasturchining yoki CI foydalanuvchisining boshqa hamma
+    ishi bilan baham ko'riladi, ya'ni limit "bu job nechta protsess
+    yaratishi mumkin" ni IFODALAY OLMAYDI.
+
+    CI'da bu haqiqiy xatoga olib keldi — GitHub runner'da Node job'i::
+
+        exit=-6  non_zero_exit
+        node::WorkerThreadsTaskRunner::DelayedTaskScheduler::Start()
+        Assertion failed: (0) == (uv_thread_create(...))
+
+    Node (libuv) bir nechta thread yaratadi, Python esa bitta — shu
+    sababli xato faqat Node'da chiqdi. Tinch konteynerda
+    TAKRORLANMAYDI (o'sha uid'da bir necha vazifa bor), shuning uchun
+    bu testning qiymati statistikada emas, SHARTNOMANI qotirishda:
+    kimdir "fork bombaga himoya kerak" deb qaytarib qo'ymasligi uchun.
+
+    Konteyner ichida esa limit TO'G'RI — pastdagi
+    `test_konteyner_ulimitlarida_NPROC_SAQLANADI` ga qarang.
+    """
+    import resource as posix_resource
+
+    for runtime in (Runtime.PYTHON, Runtime.NODE, None):
+        pairs = dict(to_rlimits(make_limits(pids_limit=50), runtime=runtime))
+        assert posix_resource.RLIMIT_NPROC not in pairs, f"runtime={runtime}"
+
+
+def test_konteyner_ulimitlarida_NPROC_SAQLANADI() -> None:
+    """Konteyner ulimit'larida `nproc` QOLADI — u yerda limit to'g'ri.
+
+    Konteyner ichida uid 10001 faqat shu job'ning protsesslarini
+    ishlatadi, ya'ni `nproc` haqiqatan "bu job nechta vazifa yaratishi
+    mumkin" degani. Fork bombaga qarshi himoya aynan shu yerda, hostda
+    emas.
+
+    Tekshiruv `to_docker_kwargs()` — ommaviy API orqali o'tadi, ya'ni
+    Docker'ga HAQIQATAN uzatiladigan qiymat sinaladi.
+    """
+    kwargs = to_docker_kwargs(make_limits(pids_limit=50), runtime=RUNTIME)
+    names = {item["name"]: item for item in kwargs["ulimits"]}
+    assert "nproc" in names
+    assert names["nproc"]["soft"] == 50
+    assert names["nproc"]["hard"] == 50
+
+
 def test_to_rlimits_node_uchun_as_QOYILMAYDI() -> None:
     """Node uchun `RLIMIT_AS` HECH QACHON qo'yilmaydi — platformadan qat'i nazar.
 

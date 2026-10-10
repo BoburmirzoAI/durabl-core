@@ -246,9 +246,42 @@ jobs:
         run: npm run typecheck
         working-directory: frontend
 
+      # Chiqish faylga yoziladi va yiqilganda oxirgi qatorlar `::error::`
+      # annotatsiyasi qilib chiqariladi — `backend-test` dagi bilan ayni
+      # yondashuv. Sababi ham ayni: job LOGINI o'qish uchun admin huquqi
+      # kerak, annotatsiya esa ochiq API orqali o'qiladi.
+      #
+      # Bu qadam haqiqatan yiqilgan va annotatsiyada faqat "exit code 1"
+      # turgan edi — ya'ni tashxis uchun ma'lumot YO'Q edi.
       - name: next build
-        run: npm run build
         working-directory: frontend
+        run: |
+          set +e
+          npm run build > build-output.txt 2>&1
+          code=$?
+          set -e
+          tail -60 build-output.txt
+          if [ "$code" -ne 0 ]; then
+            # Next.js xatoni ko'p qatorda yozadi; annotatsiyaga eng
+            # ma'noli qatorlar chiqariladi.
+            grep -iE 'error|failed|cannot|out of memory|heap' build-output.txt \
+              | head -12 \
+              | while IFS= read -r line; do printf '::error::%s\n' "$line"; done
+            {
+              printf '## Frontend build xatosi\n\n```\n'
+              tail -60 build-output.txt
+              printf '```\n'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit "$code"
+
+      - name: Build chiqishini saqlash
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build-output
+          path: frontend/build-output.txt
+          if-no-files-found: ignore
 
   # ---------------------------------------------------------------------------
   # 5. Sandbox testlari — HAQIQIY Docker konteyner

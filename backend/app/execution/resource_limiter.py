@@ -92,6 +92,40 @@ SECURITY_OPT_NO_NEW_PRIVILEGES: Final[str] = "no-new-privileges"
 #: enterprise 1024->4096), shuning uchun koeffitsient sifatida saqlanadi.
 NOFILE_PER_DISK_MB: Final[int] = 4
 #: `RLIMIT_NPROC` uchun eng kichik ma'noli qiymat (interpretator ishga tushishi uchun).
+#:
+#: ## DIQQAT — bu limit FAQAT konteyner ichida ma'noga ega
+#:
+#: `RLIMIT_NPROC` — PROTSESS bo'yicha emas, **UID bo'yicha** limit:
+#: o'sha foydalanuvchining BARCHA vazifalari (protsesslar VA thread'lar)
+#: hisoblanadi. Shu sababli:
+#:
+#: * **Konteyner ichida** (`_ulimits` -> `to_docker_kwargs`) u TO'G'RI
+#:   ishlaydi — uid 10001
+#:   faqat shu job'ning protsesslarini ishlatadi, ya'ni limit haqiqatan
+#:   "bu job nechta vazifa yaratishi mumkin" degani. Fork bombaga
+#:   qarshi himoya aynan shu yerda.
+#: * **Hostda** (`to_rlimits`, lokal runner) u BUZUQ — uid dasturchining
+#:   yoki CI foydalanuvchisining boshqa hamma ishi bilan baham
+#:   ko'riladi. O'sha uid'da allaqachon 100+ vazifa bo'lsa, limit 50
+#:   bo'lgani uchun HAR QANDAY `fork()` yoki `pthread_create()` darhol
+#:   `EAGAIN` bilan yiqiladi.
+#:
+#: Ikkinchi holat haqiqatda ro'y berdi. CI'da (GitHub runner) Node job'i
+#: shunday yiqilardi::
+#:
+#:     exit=-6  non_zero_exit
+#:     node::WorkerThreadsTaskRunner::DelayedTaskScheduler::Start()
+#:     Assertion failed: (0) == (uv_thread_create(...))
+#:
+#: Node (libuv) ishga tushishida bir nechta thread yaratadi, Python esa
+#: bitta — shu sababli xato faqat Node'da chiqdi. Tinch konteynerda
+#: takrorlanmaydi (o'sha uid'da bir necha vazifa bor), shuning uchun
+#: lokal sinovlar yolg'on "o'tdi" berardi.
+#:
+#: Xulosa: hostda `RLIMIT_NPROC` "job chegarasi" ni IFODALAY OLMAYDI —
+#: har qanday qiymat xato bo'ladi (kichik bo'lsa buziladi, katta bo'lsa
+#: himoya bermaydi). To'g'ri mexanizm — cgroup `pids` nazoratchisi
+#: (`--pids-limit`), u `SandboxManager` da allaqachon qo'yiladi.
 MIN_NPROC: Final[int] = 32
 
 #: Bir megabayt — baytga aylantirish uchun.
@@ -415,6 +449,11 @@ def to_rlimits(
     `resource` moduli bo'lmagan tizimda bo'sh ro'yxat, macOS'da esa
     `RLIMIT_AS` tashlab yuboriladi (`RLIMIT_AS_SUPPORTED` ga qarang).
 
+    `RLIMIT_NPROC` bu ro'yxatga HECH QACHON kirmaydi: u UID bo'yicha
+    limit va hostda "job chegarasi" ni ifodalay olmaydi (batafsil
+    `MIN_NPROC` izohida). Konteyner ichida esa `_ulimits()` orqali
+    qo'yiladi va u yerda to'g'ri ishlaydi.
+
     Juftlikdagi `hard` qiymati `soft` ga TENG qo'yiladi — bola jarayon
     cheklovni o'zi yumshata olmasligi uchun.
 
@@ -437,7 +476,7 @@ def to_rlimits(
             # CPU vaqti: `while True: pass` kabi halqa uchun oxirgi to'siq.
             ("RLIMIT_CPU", max(1, limits.timeout_seconds)),
             ("RLIMIT_NOFILE", nofile_limit(limits)),
-            ("RLIMIT_NPROC", nproc_limit(limits)),
+            # `RLIMIT_NPROC` ATAYLAB YO'Q — sababi pastda.
             ("RLIMIT_FSIZE", fsize_limit_bytes(limits)),
             # Core dump yozilmaydi: diskni to'ldirmasligi va mijoz xotirasi
             # faylga tushib qolmasligi uchun.
