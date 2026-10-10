@@ -95,9 +95,34 @@ jobs:
       # `tests/conftest.py` kerakli muhitni O'ZI qo'yadi (ENV=test,
       # SQLite xotira, REDIS_FAKE, BCRYPT_ROUNDS=4) — shuning uchun bu
       # yerda hech qanday env bermaymiz. Bitta manba qoidasi.
+      # Chiqish faylga yoziladi va yiqilganda yiqilgan test nomlari
+      # `::error::` annotatsiyasi sifatida chiqariladi.
+      #
+      # Nega shunday: job LOGINI o'qish uchun repozitoriyga admin huquqi
+      # kerak, annotatsiyalar esa ochiq repo'da API orqali o'qiladi
+      # (`/check-runs/{id}/annotations`). Ya'ni "CI yiqildi, lekin nega
+      # ekani ko'rinmaydi" holati bo'lmaydi — nom darhol ko'rinadi.
       - name: pytest (qoplama bilan)
-        run: pytest --cov=app --cov-report=term-missing --cov-report=xml
         working-directory: backend
+        run: |
+          set +e
+          pytest --cov=app --cov-report=term-missing --cov-report=xml -q > pytest-output.txt 2>&1
+          code=$?
+          set -e
+          tail -40 pytest-output.txt
+          if [ "$code" -ne 0 ]; then
+            # `-q` rejimida chiqish TTY bo'lmaganda yakuniy qator
+            # chiqmaydi, lekin `FAILED`/`ERROR` qatorlari chiqadi.
+            grep -E '^(FAILED|ERROR)' pytest-output.txt | while IFS= read -r line; do
+              printf '::error::%s\n' "$line"
+            done
+            {
+              printf '## Yiqilgan testlar\n\n```\n'
+              grep -E '^(FAILED|ERROR)' pytest-output.txt || printf '(nom aniqlanmadi)\n'
+              printf '```\n'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit "$code"
 
       - name: Qoplamani xulosaga yozish
         if: always()
@@ -107,12 +132,15 @@ jobs:
           printf '```\n' >> "$GITHUB_STEP_SUMMARY"
         working-directory: backend
 
-      - name: Qoplama hisobotini saqlash
+      # Yiqilganda ham saqlanadi — to'liq chiqish artifact'dan olinadi.
+      - name: Hisobotlarni saqlash
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-xml
-          path: backend/coverage.xml
+          name: backend-test-reports
+          path: |
+            backend/coverage.xml
+            backend/pytest-output.txt
           if-no-files-found: ignore
 
   # ---------------------------------------------------------------------------

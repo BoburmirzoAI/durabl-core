@@ -57,6 +57,9 @@ dmypy.json
 .coverage
 .coverage.*
 coverage.xml
+# CI `backend-test` job'i yiqilganda to'liq pytest chiqishini shu faylga
+# yozadi va artifact sifatida saqlaydi — repozitoriyga tushmasligi kerak.
+pytest-output.txt
 htmlcov/
 *.cover
 nosetests.xml
