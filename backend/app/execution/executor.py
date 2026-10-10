@@ -31,6 +31,7 @@ from datetime import datetime
 from app.config import settings
 from app.constants import FailureReason, LogStream
 from app.exceptions import ExecutionError, ExecutionTimeoutError
+from app.execution.http_runner import HttpRunner, HttpRuntime
 from app.execution.result_collector import ResultCollector
 from app.execution.runtime_base import (
     BaseRuntime,
@@ -192,7 +193,15 @@ class Executor:
                 Bu VALIDATSIYA xatosi (bajarish hatto boshlanmaydi), shuning
                 uchun natijaga aylantirilmaydi.
         """
-        runtime = get_runtime(spec.runtime)
+        # HTTP job bajarish uchun kod emas, MIJOZNING ENDPOINTI chaqiriladi.
+        # Shu sababli runtime va runner boshqa, lekin undan keyingi butun
+        # zanjir (TimeoutGuard, ResultCollector, log fanout, `_finish`)
+        # AYNI — ishonchlilik mantig'i ikki martalab yozilmaydi.
+        #
+        # `HttpRunner` har bajarish uchun YANGI yasaladi (`self.runner`
+        # keshlanmaydi): u ketayotgan so'rov vazifasini o'zida saqlaydi va
+        # `kill()` aynan o'shani bekor qilishi kerak.
+        runtime: BaseRuntime = HttpRuntime() if spec.is_http else get_runtime(spec.runtime)
         collector = ResultCollector(limits=spec.limits)
         sink = _LogFanout(collector, on_log)
         start = utcnow()
@@ -200,16 +209,20 @@ class Executor:
         logger.info(
             "execution.started",
             job_id=spec.job_id,
+            kind=spec.kind.value,
+            # HTTP job'da "runtime" ma'nosiz (`HttpRuntime` uni `python`
+            # deb ko'rsatadi) — shuning uchun `kind` yonida turadi.
             runtime=runtime.runtime.value,
             attempt=spec.attempt_number,
             correlation_id=spec.correlation_id or None,
             timeout_seconds=spec.timeout_seconds,
             memory_mb=spec.limits.memory_mb,
             sandbox_enabled=settings.SANDBOX_ENABLED,
+            target_host=_target_host(spec),
         )
 
         try:
-            runner = self.runner
+            runner: SandboxRunner = HttpRunner() if spec.is_http else self.runner
         except Exception as exc:
             logger.error(
                 "execution.runner_init_failed",
@@ -366,6 +379,19 @@ class Executor:
 def default_executor() -> Executor:
     """Sozlamaga mos standart `Executor` nusxasi (`execution_service` uchun)."""
     return Executor()
+
+
+def _target_host(spec: SandboxSpec) -> str | None:
+    """HTTP job'ning maqsad HOSTINI qaytaradi (log uchun).
+
+    To'liq URL ATAYLAB log qilinmaydi: query qismida token yoki imzo
+    bo'lishi mumkin. `kind=CODE` uchun `None`.
+    """
+    if not spec.is_http or not spec.target_url:
+        return None
+    from urllib.parse import urlparse
+
+    return urlparse(spec.target_url).hostname
 
 
 __all__ = [

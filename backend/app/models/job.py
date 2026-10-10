@@ -26,7 +26,7 @@ from typing import TYPE_CHECKING, Any
 from sqlalchemy import Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.constants import FailureReason, JobStatus, Priority, Runtime
+from app.constants import FailureReason, HttpMethod, JobKind, JobStatus, Priority, Runtime
 from app.models.base import (
     Base,
     DateTimeTZ,
@@ -76,8 +76,29 @@ class Job(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     # Bajarilishi kerak bo'lgan kod
     # ------------------------------------------------------------------
 
-    #: Mijoz kodi (sandbox ichida `main.py` / `main.js` sifatida yoziladi)
-    code: Mapped[str] = mapped_column(Text, nullable=False)
+    #: Job ikki rejimdan qaysi biri — `CODE` (sandboxda kod) yoki
+    #: `HTTP` (mijozning endpointini chaqirish). Qiymatga qarab
+    #: `code` yoki `target_url` to'ldirilishi SHART (tekshiruv sxema
+    #: qatlamida: `JobCreate`).
+    kind: Mapped[JobKind] = mapped_column(
+        enum_column(JobKind),
+        default=JobKind.CODE,
+        server_default=JobKind.CODE.value,
+        nullable=False,
+        index=True,
+    )
+
+    #: Mijoz kodi (sandbox ichida `main.py` / `main.js` sifatida yoziladi).
+    #:
+    #: `kind=HTTP` bo'lganda bu ustun BO'SH qoladi — shuning uchun
+    #: `nullable=True`. "Kod yo'q bo'lsa URL bor" qoidasi DB CHECK bilan
+    #: emas, `JobCreate` sxemasida tekshiriladi: xato xabari mijozga
+    #: tushunarli bo'lishi kerak, DB cheklovi esa quruq
+    #: `IntegrityError` beradi.
+    code: Mapped[str | None] = mapped_column(Text, nullable=True)
+    #: `kind=CODE` uchun bajarish muhiti. `kind=HTTP` da ham to'ldiriladi
+    #: (standart `PYTHON`), lekin ISHLATILMAYDI — ustun `nullable=False`
+    #: bo'lib qolishi mavjud ma'lumot va so'rovlarni buzmaslik uchun.
     runtime: Mapped[Runtime] = mapped_column(enum_column(Runtime), nullable=False)
     priority: Mapped[Priority] = mapped_column(
         enum_column(Priority),
@@ -96,6 +117,26 @@ class Job(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     payload: Mapped[dict[str, Any] | None] = mapped_column(JSONType, nullable=True)
     #: Sandbox muhit o'zgaruvchilari (`{"KEY": "value"}`)
     env_vars: Mapped[dict[str, str] | None] = mapped_column(JSONType, nullable=True)
+
+    # ------------------------------------------------------------------
+    # HTTP rejimi (`kind=HTTP`) — mijozning endpointi
+    # ------------------------------------------------------------------
+
+    #: Chaqiriladigan URL. SSRF tekshiruvidan o'tadi
+    #: (`validate_webhook_url` — webhook'lar bilan AYNI qoida, toki
+    #: ikki joyda ikki xil himoya bo'lmasin).
+    target_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
+    #: HTTP metodi. `kind=HTTP` bo'lganda to'ldiriladi (standart `POST`).
+    http_method: Mapped[HttpMethod | None] = mapped_column(
+        enum_column(HttpMethod, length=16), nullable=True
+    )
+    #: Qo'shimcha so'rov header'lari. Durabl o'z header'larini
+    #: (`X-Durabl-*`, `Content-Type`) USTIDAN yozadi — mijoz imzoni
+    #: almashtirib qo'ymasligi uchun.
+    http_headers: Mapped[dict[str, str] | None] = mapped_column(JSONType, nullable=True)
+    #: Javobning HTTP status kodi (oxirgi urinish). Analitika va DLQ'da
+    #: "nega yiqildi?" savoliga javob beradi.
+    response_status: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     # ------------------------------------------------------------------
     # Resurs va qayta urinish limitlari

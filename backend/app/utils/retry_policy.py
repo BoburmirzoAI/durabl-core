@@ -27,6 +27,11 @@ NON_RETRYABLE_REASONS: frozenset[FailureReason] = frozenset(
         FailureReason.OOM,
         FailureReason.OUTPUT_TOO_LARGE,
         FailureReason.MAX_RETRIES_EXCEEDED,
+        # 4xx — mijozning so'rovi xato (yo'q endpoint, noto'g'ri token).
+        # Ayni so'rov ayni javobni oladi, ya'ni qayta urinish faqat
+        # kvotani yeydi. 5xx esa ATAYLAB bu ro'yxatda YO'Q — u
+        # vaqtinchalik nosozlik va qayta urinish ma'noga ega.
+        FailureReason.HTTP_CLIENT_ERROR,
     }
 )
 

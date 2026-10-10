@@ -154,15 +154,41 @@ def test_should_retry_max_retries_nol() -> None:
 
 
 def test_non_retryable_reasons_tarkibi() -> None:
-    """To'plam shartnomadagi to'rt sababdan iborat."""
+    """To'plam AYNAN shu sabablardan iborat — tasodifiy o'sib ketmasligi uchun.
+
+    Bu ro'yxatga sabab qo'shish MIJOZ uchun sezilarli qaror: job
+    yiqilganda qayta urinmasdan DARHOL DLQ'ga tushadi. Shuning uchun
+    to'plam ochiq qotirilgan — yangi sabab qo'shilsa, test yiqilib
+    e'tiborni tortadi va qaror ongli qabul qilinadi.
+    """
     assert NON_RETRYABLE_REASONS == frozenset(
         {
             FailureReason.VALIDATION_ERROR,
             FailureReason.OOM,
             FailureReason.OUTPUT_TOO_LARGE,
             FailureReason.MAX_RETRIES_EXCEEDED,
+            # `JobKind.HTTP`: 4xx — mijozning so'rovi xato (yo'q
+            # endpoint, noto'g'ri token). Ayni so'rov ayni javobni
+            # oladi, ya'ni qayta urinish faqat kvotani yeydi.
+            FailureReason.HTTP_CLIENT_ERROR,
         }
     )
+
+
+def test_http_server_xatosi_QAYTA_URINILADI() -> None:
+    """5xx va ulanish xatosi vaqtinchalik — qayta urinish SHART.
+
+    4xx bilan farqi shunda: server qulagan yoki tarmoq uzilgan bo'lsa,
+    bir necha soniyadan keyin ayni so'rov muvaffaqiyatli bo'lishi
+    mumkin. Shuning uchun ular `NON_RETRYABLE_REASONS` da YO'Q.
+    """
+    assert FailureReason.HTTP_SERVER_ERROR not in NON_RETRYABLE_REASONS
+    assert FailureReason.HTTP_CONNECT_ERROR not in NON_RETRYABLE_REASONS
+
+    policy = RetryPolicy(max_retries=3)
+    assert policy.should_retry(1, failure_reason=FailureReason.HTTP_SERVER_ERROR) is True
+    assert policy.should_retry(1, failure_reason=FailureReason.HTTP_CONNECT_ERROR) is True
+    assert policy.should_retry(1, failure_reason=FailureReason.HTTP_CLIENT_ERROR) is False
 
 
 # ---------------------------------------------------------------------------

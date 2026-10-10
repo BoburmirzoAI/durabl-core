@@ -107,6 +107,51 @@ class ExecutionStatus(StrEnum):
     LOST = "lost"  # Lease tugadi, worker javob bermadi
 
 
+class JobKind(StrEnum):
+    """Job nimani bajaradi — mahsulotning ikki ish rejimi.
+
+    * `CODE` — mijoz KODINI yuboradi, Durabl uni izolyatsiyalangan
+      sandboxda bajaradi. Kod mijozning serveriga va DB'siga TEGA
+      OLMAYDI (tarmoq o'chirilgan, paket yo'q).
+    * `HTTP` — mijoz o'z ENDPOINTINI ko'rsatadi, Durabl uni belgilangan
+      vaqtda chaqiradi. Kod mijozning serverida qoladi, ya'ni o'z DB'si
+      va kutubxonalari bilan erkin ishlaydi.
+
+    Ikkisi AYNI hayot siklidan o'tadi — navbat, lease, heartbeat,
+    eksponensial backoff, DLQ, webhook. Farq faqat "bajarish" qadamida:
+    `SandboxManager`/`LocalRunner` o'rniga `HttpRunner` ishlaydi.
+
+    Standart qiymat `CODE`: mavjud mijozlar `kind` yubormasa ham eski
+    xulq saqlanadi.
+    """
+
+    CODE = "code"
+    HTTP = "http"
+
+
+class HttpMethod(StrEnum):
+    """`JobKind.HTTP` uchun HTTP metodi.
+
+    `HEAD` va `OPTIONS` ATAYLAB yo'q: ular tana qaytarmaydi, ya'ni
+    job natijasi har doim bo'sh bo'lardi va foydasi yo'q.
+    """
+
+    GET = "GET"
+    POST = "POST"
+    PUT = "PUT"
+    PATCH = "PATCH"
+    DELETE = "DELETE"
+
+    @property
+    def allows_body(self) -> bool:
+        """Metod so'rov tanasini qabul qiladimi.
+
+        `GET` va `DELETE` uchun tana yuborilmaydi: ko'p server va proxy
+        ularni e'tiborsiz qoldiradi yoki rad etadi.
+        """
+        return self in {HttpMethod.POST, HttpMethod.PUT, HttpMethod.PATCH}
+
+
 class Runtime(StrEnum):
     """Qo'llab-quvvatlanadigan bajarish muhitlari."""
 
@@ -182,6 +227,18 @@ class FailureReason(StrEnum):
     MAX_RETRIES_EXCEEDED = "max_retries_exceeded"
     INTERNAL_ERROR = "internal_error"
     OUTPUT_TOO_LARGE = "output_too_large"
+
+    # --- `JobKind.HTTP` uchun ---------------------------------------------
+    #: 4xx — MIJOZ xatosi (yo'q endpoint, noto'g'ri token, yaroqsiz tana).
+    #: Qayta urinish FOYDA BERMAYDI: ayni so'rov ayni javobni oladi, faqat
+    #: kvota yeyiladi. Shu sababli `NON_RETRYABLE_REASONS` ichida.
+    HTTP_CLIENT_ERROR = "http_client_error"
+    #: 5xx — SERVER tomonidagi nosozlik, odatda vaqtinchalik. Qayta
+    #: urinish ma'noga ega, shuning uchun backoff bilan takrorlanadi.
+    HTTP_SERVER_ERROR = "http_server_error"
+    #: Ulanish o'rnatilmadi (DNS, TLS, refused). Vaqtinchalik deb
+    #: hisoblanadi — qayta urinadi.
+    HTTP_CONNECT_ERROR = "http_connect_error"
 
 
 class PlanType(StrEnum):
@@ -557,6 +614,8 @@ __all__ = [
     "DeviceType",
     "ExecutionStatus",
     "FailureReason",
+    "HttpMethod",
+    "JobKind",
     "JobStatus",
     "LogStream",
     "LoginMethod",

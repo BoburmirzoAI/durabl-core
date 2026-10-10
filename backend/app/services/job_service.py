@@ -47,6 +47,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.constants import (
     FailureReason,
+    JobKind,
     JobStatus,
     PlanType,
     Priority,
@@ -957,7 +958,7 @@ class JobService:
     @staticmethod
     def _fingerprint_source(
         *,
-        code: str,
+        code: str | None,
         runtime: object,
         priority: object,
         payload: dict[str, Any] | None,
@@ -969,6 +970,10 @@ class JobService:
         scheduled_at: datetime | None,
         cron_expression: str | None,
         tags: builtins.list[str] | None,
+        kind: object = JobKind.CODE,
+        target_url: str | None = None,
+        http_method: object = None,
+        http_headers: dict[str, str] | None = None,
     ) -> dict[str, Any]:
         """Barmoq izi uchun kanonik lug'at.
 
@@ -976,9 +981,25 @@ class JobService:
         aynan shular `jobs` jadvaliga yoziladi. Shu tufayli mavjud job'dan
         qayta hisoblangan iz yangi so'rovning izi bilan solishtirilishi
         mumkin bo'ladi.
+
+        ## HTTP maydonlari NEGA izga kiradi
+
+        `kind=HTTP` bo'lganda `code` BO'SH bo'ladi, ya'ni ish mazmuni
+        butunlay `target_url` / `http_method` / `http_headers` da.
+        Agar ular izga kirmasa, ikki BUTUNLAY BOSHQA HTTP job (masalan
+        `/api/a` va `/api/b`) bir xil iz berardi va ayni
+        `Idempotency-Key` bilan ikkinchisi "takroriy so'rov" deb
+        yaratilmay qolardi — ya'ni mijozning ishi jimgina bajarilmaydi.
+
+        `kind` ning o'zi ham izda: aks holda bo'sh kodli CODE job va
+        HTTP job to'qnashishi mumkin.
         """
         return {
+            "kind": str(kind),
             "code": code,
+            "target_url": target_url,
+            "http_method": str(http_method) if http_method is not None else None,
+            "http_headers": http_headers,
             "runtime": str(runtime),
             "priority": str(priority),
             "payload": payload,
@@ -997,7 +1018,11 @@ class JobService:
         """Mavjud job'ning barmoq izini uning o'z maydonlaridan hisoblaydi."""
         return IdempotencyService.fingerprint(
             cls._fingerprint_source(
+                kind=job.kind,
                 code=job.code,
+                target_url=job.target_url,
+                http_method=job.http_method,
+                http_headers=job.http_headers,
                 runtime=job.runtime,
                 priority=job.priority,
                 payload=job.payload,

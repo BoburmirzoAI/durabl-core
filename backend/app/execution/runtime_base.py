@@ -29,7 +29,7 @@ from app.constants import (
     LogStream,
     Runtime,
 )
-from app.exceptions import UnsupportedRuntimeError
+from app.exceptions import SandboxError, UnsupportedRuntimeError
 from app.execution.types import RunnerOutcome, RunnerPayload, SandboxSpec
 
 #: Log oqimiga chunk uzatish uchun callback turi.
@@ -72,7 +72,20 @@ class BaseRuntime(ABC):
 
         Ikki runner ham (sandbox va lokal) ayni shu tayyorgarlikdan foydalanadi,
         shuning uchun mantiq bazaviy klassda.
+
+        Raises:
+            SandboxError: `spec.code` bo'sh. Bu DASTURCHI xatosi, mijoz
+                xatosi emas: `kind=HTTP` bo'lgan spec `HttpRunner` ga
+                ketishi kerak edi, kod runner'iga emas. Jim o'tkazib
+                bo'sh fayl yozish mijozga "kod hech narsa qaytarmadi"
+                degan chalkash natija berardi.
         """
+        if spec.code is None:
+            raise SandboxError(
+                "Kod bajarish uchun `spec.code` bo'sh bo'lmasligi kerak. "
+                "HTTP rejimidagi job `HttpRunner` orqali bajariladi.",
+                details={"job_id": spec.job_id, "kind": str(spec.kind)},
+            )
         workdir.mkdir(parents=True, exist_ok=True)
         (workdir / self.code_filename).write_text(spec.code, encoding="utf-8")
         if spec.payload is not None:

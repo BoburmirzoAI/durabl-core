@@ -23,6 +23,8 @@ from app.config import settings
 from app.constants import (
     ExecutionStatus,
     FailureReason,
+    HttpMethod,
+    JobKind,
     LogStream,
     PlanLimits,
     Runtime,
@@ -125,16 +127,39 @@ class ResourceLimits:
 
 @dataclass(slots=True)
 class SandboxSpec:
-    """Bitta kod bajarish uchun to'liq topshiriq.
+    """Bitta bajarish topshirig'i (kod yoki HTTP chaqiruv).
 
-    `Executor` va `SandboxManager` faqat shu obyektga qaraydi — DB modeliga
+    `Executor` va runner'lar faqat shu obyektga qaraydi — DB modeliga
     bog'liq emas. Shu tufayli bajarish qatlamini DB'siz test qilish mumkin.
+
+    ## Ikki rejim bitta obyektda
+
+    `kind` qaysi runner ishlashini belgilaydi:
+
+    * `JobKind.CODE` — `code` va `runtime` to'ldiriladi,
+      `SandboxManager`/`LocalRunner` ishlaydi;
+    * `JobKind.HTTP` — `target_url` va `http_method` to'ldiriladi,
+      `HttpRunner` ishlaydi; `code` BO'SH bo'ladi.
+
+    Ikki rejim uchun ikkita alohida spec turi ATAYLAB yasalmadi: shunda
+    `Executor`, `ResultCollector`, `TimeoutGuard` va butun ishonchlilik
+    zanjiri ikki martalab yozilishi kerak bo'lardi. Bitta obyekt bilan
+    HTTP job AYNI kafolatlarni (lease, retry, DLQ, log) tekinga oladi.
     """
 
     job_id: str
-    code: str
     runtime: Runtime
     limits: ResourceLimits
+    #: `kind=CODE` uchun mijoz kodi. `kind=HTTP` da `None`.
+    code: str | None = None
+    #: Bajarish rejimi. Standart `CODE` — mavjud chaqiruvlar o'zgarmaydi.
+    kind: JobKind = JobKind.CODE
+    #: `kind=HTTP` uchun chaqiriladigan manzil.
+    target_url: str | None = None
+    #: `kind=HTTP` uchun metod.
+    http_method: HttpMethod | None = None
+    #: `kind=HTTP` uchun qo'shimcha header'lar.
+    http_headers: dict[str, str] | None = None
     payload: dict[str, Any] | None = None
     env_vars: dict[str, str] | None = None
     correlation_id: str = ""
@@ -144,6 +169,11 @@ class SandboxSpec:
     def timeout_seconds(self) -> int:
         """Qulaylik uchun — `limits.timeout_seconds`."""
         return self.limits.timeout_seconds
+
+    @property
+    def is_http(self) -> bool:
+        """HTTP rejimimi (`HttpRunner` ishlaydimi)."""
+        return self.kind is JobKind.HTTP
 
     @property
     def code_filename(self) -> str:

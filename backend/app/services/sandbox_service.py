@@ -31,7 +31,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from app.constants import PlanLimits, Runtime
+from app.constants import HttpMethod, JobKind, PlanLimits, Runtime
 from app.execution.executor import Executor, default_executor
 from app.execution.runtime_base import LogSink
 from app.execution.types import ExecutionResult, ResourceLimits, SandboxSpec
@@ -141,9 +141,15 @@ class SandboxService:
 
         spec = SandboxSpec(
             job_id=str(job.id),
+            kind=JobKind(job.kind),
             code=job.code,
             runtime=Runtime(job.runtime),
             limits=limits,
+            # HTTP maydonlari `kind=CODE` da `None` bo'lib qoladi —
+            # runner ularga qaramaydi.
+            target_url=job.target_url,
+            http_method=HttpMethod(job.http_method) if job.http_method else None,
+            http_headers=self._normalize_env(job.http_headers),
             payload=self._normalize_payload(job.payload),
             env_vars=self._normalize_env(job.env_vars),
             correlation_id=job.correlation_id or "",
@@ -153,6 +159,7 @@ class SandboxService:
         logger.debug(
             "sandbox.spec_built",
             job_id=spec.job_id,
+            kind=spec.kind.value,
             runtime=spec.runtime.value,
             attempt=spec.attempt_number,
             memory_mb=limits.memory_mb,
