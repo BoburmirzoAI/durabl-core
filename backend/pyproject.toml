@@ -19,6 +19,26 @@ select = [
     "C4",                # comprehensions
     "ASYNC",             # async xatolari
     "RUF",               # ruff'ning o'z qoidalari
+    "DTZ",               # vaqt zonasiz datetime — pastdagi izohga qarang
+    # flake8-bandit (xavfsizlik) — TO'LIQ `S` ataylab yoqilmagan, faqat
+    # quyidagi qoidalar. Sababi: `S` ning katta qismi O'ZGARUVCHI NOMIGA
+    # qarab ishlaydi (`S105` "password" so'zini ko'rsa ogohlantiradi), ya'ni
+    # bizda 25 ta yolg'on signal berardi (`token_type`, `FAILED_PASSWORD`
+    # enum nomi va h.k.). Ularni `noqa` bilan bo'g'ish kodni yomonlashtiradi
+    # va haqiqiy signalni suyultiradi. Qotirilgan maxfiy kalitlardan himoya
+    # nom bo'yicha linter EMAS, GitHub'ning secret scanning'i orqali keladi.
+    #
+    # Quyidagilar esa HARAKATGA qarab ishlaydi, ya'ni yolg'on signal bermaydi
+    # va hozir hammasi toza (0 buzilish) — demak bu darvoza faqat KELGUSIDA
+    # yozilgan xavfli kodni ushlaydi:
+    "S301",              # pickle — ishonchsiz ma'lumotdan kod bajarilishi
+    "S302", "S306", "S307",  # marshal, mktemp, eval
+    "S308",              # mark_safe — XSS
+    "S324",              # zaif hash (md5/sha1) xavfsizlik uchun
+    "S501", "S502", "S503", "S506",  # SSL tekshiruvi o'chirilgan, xavfli yuklash
+    "S602", "S603", "S604", "S605", "S606", "S607", "S609",  # subprocess/shell
+    "S608",              # SQL in'ektsiyasi (matn ulash bilan so'rov yasash)
+    "S612", "S701", "S702",  # logging config, jinja autoescape, mako
 ]
 ignore = [
     "E501",   # qator uzunligi — formatter hal qiladi
@@ -37,6 +57,10 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["B008", "N802", "N803"]
 "alembic/versions/*" = ["E402", "F401", "I001"]
+# Bu faylning BUTUN maqsadi — naive va aware datetime o'tishini tekshirish,
+# ya'ni zonasiz `datetime(...)` yasash uning sinov ma'lumoti. `DTZ001` shu
+# yerda qoidabuzarlik emas, test kirishi.
+"tests/unit/test_time_utils.py" = ["DTZ001"]
 
 [tool.ruff.format]
 quote-style = "double"

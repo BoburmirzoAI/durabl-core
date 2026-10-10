@@ -678,12 +678,30 @@ class JobRepository(BaseRepository[Job]):
 
     @staticmethod
     def _parse_bucket(value: Any) -> datetime | None:
-        """Guruhlash natijasini `datetime`ga keltiradi (SQLite matn qaytaradi)."""
+        """Guruhlash natijasini `datetime`ga keltiradi (SQLite matn qaytaradi).
+
+        `DTZ007` bu yerda ATAYLAB bo'g'ilgan. Ruff "`strptime()` `%z` siz
+        chaqirilgan, natija zonasiz chiqadi" deb ogohlantiradi — bu to'g'ri
+        kuzatuv, lekin xato emas, chunki:
+
+        1. Matnni `_bucket_expression()` ning SQLite shoxi yasaydi va u
+           ustunni `strftime` bilan o'qiydi; ustunning o'zi UTC'da
+           saqlanadi (`DateTimeTZ`), ya'ni matndagi vaqt UTC.
+        2. Formatda zona maydoni YO'Q (`%Y-%m-%d %H:%M:%S`), shuning uchun
+           `%z` qo'shish mumkin emas — tahlil butunlay yiqilardi.
+        3. Zonasiz natija darhol `ensure_utc()` ga uzatiladi, u esa
+           `tzinfo=UTC` ni o'rnatadi. Ya'ni funksiyadan qaytadigan qiymat
+           HAR DOIM aware.
+
+        Ya'ni zonaning manbasi matn emas, sxema — va bu invariantni
+        buzmaslik uchun `_bucket_expression()` PostgreSQL shoxida ham
+        `timezone('UTC', col)` ishlatiladi.
+        """
         if value is None:
             return None
         if isinstance(value, datetime):
             return ensure_utc(value)
-        parsed = datetime.strptime(str(value), _SQLITE_BUCKET_PARSE)
+        parsed = datetime.strptime(str(value), _SQLITE_BUCKET_PARSE)  # noqa: DTZ007
         return ensure_utc(parsed)
 
     @staticmethod
