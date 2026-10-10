@@ -61,6 +61,11 @@ from typing import TYPE_CHECKING, Any
 # --- Muhit: `app.*` importidan OLDIN -------------------------------------
 os.environ.update(
     ENV="test",
+    # Faqat ZAXIRA qiymat: haqiqiy URL `test_engine` fixture'ida
+    # `tmp_path` ichidagi FAYL bazasiga almashtiriladi (sababi o'sha
+    # fixture'ning docstring'ida — `StaticPool` bitta ulanishni baham
+    # ko'rishi tranzaksiyalarni aralashtiradi). Bu yerda qiymat turishi
+    # SHART, chunki `app.config` import paytida o'qiydi.
     DATABASE_URL="sqlite+aiosqlite:///:memory:",
     REDIS_FAKE="true",
     BCRYPT_ROUNDS="4",
@@ -128,13 +133,46 @@ FROZEN_INSTANT = datetime(2026, 10, 4, 12, 30, 45, tzinfo=UTC)
 
 
 @pytest.fixture
-async def test_engine() -> AsyncIterator[Any]:
-    """Har test uchun toza SQLite xotira bazasi.
+async def test_engine(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[Any]:
+    """Har test uchun toza SQLite FAYL bazasi (`tmp_path` ichida).
 
     `create_engine()` ataylab ishlatiladi (`create_async_engine` emas):
-    u `PRAGMA foreign_keys=ON` tinglovchisini ham ulaydi, ya'ni
-    `ON DELETE CASCADE` testda ham ishlaydi.
+    u SQLite PRAGMA tinglovchisini ham ulaydi (`foreign_keys=ON`, WAL,
+    `busy_timeout`), ya'ni `ON DELETE CASCADE` testda ham ishlaydi.
+
+    ## Nega xotira bazasi EMAS — bu nozik joy
+
+    Avval `sqlite+aiosqlite:///:memory:` ishlatilardi. Xotira bazasi
+    ulanishga bog'liq, shuning uchun `app/database.py` uning uchun
+    `StaticPool` tanlaydi — ya'ni **barcha sessiyalar BITTA DBAPI
+    ulanishini baham ko'radi**.
+
+    Bitta ulanishda bir nechta `AsyncSession` parallel ishlasa,
+    tranzaksiya chegaralari ARALASHADI. Aniq zarar: A sessiyasi
+    `UPDATE` qilib hali `COMMIT` qilmagan paytda B sessiyasi yopilsa
+    (`async with` chiqishida `ROLLBACK` chiqaradi), A ning yozuvi
+    YO'QOLADI. A ning `commit()` i esa xato BERMAYDI — bo'sh
+    tranzaksiyani commit qiladi.
+
+    Natija: kod "muvaffaqiyatli" deb log yozadi, DB'da esa o'zgarish
+    yo'q. Bu `test_pool_processes_queued_job` ni beqaror qilgan edi
+    (lokalda ~1/6, CI'ning sekinroq runner'ida deyarli har safar) va
+    sabab topilishi qiyin bo'ldi, chunki log muvaffaqiyat ko'rsatardi.
+
+    Alohida skript bilan o'lchangan: 40 urinishdan 40 tasida yozuv
+    yo'qoldi.
+
+    Fayl bazasida esa `NullPool` ishlatiladi — har sessiya O'Z
+    ulanishini oladi, tranzaksiyalar bir-biriga tegmaydi. `tmp_path`
+    har test uchun yangi katalog beradi, ya'ni izolyatsiya ham saqlanadi.
+
+    Narxi: fayl I/O qo'shiladi. O'lchangan — to'plam sezilarli
+    sekinlashmaydi, chunki asosiy vaqt sxema yaratishga ketadi (u
+    ikkisida ham bor).
     """
+    db_path = tmp_path / "durabl-test.db"
+    monkeypatch.setattr(settings, "DATABASE_URL", f"sqlite+aiosqlite:///{db_path}")
+
     engine = create_engine()
     set_engine(engine)
     await init_db(create_all=True)

@@ -15,7 +15,7 @@ from __future__ import annotations
 import logging
 from collections.abc import AsyncGenerator, AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Any
+from typing import Any, Final
 
 from sqlalchemy import event, text
 from sqlalchemy.ext.asyncio import (
@@ -34,6 +34,11 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Engine (lazy singleton)
 # ---------------------------------------------------------------------------
+
+#: SQLite qulf kutish vaqti (ms) — parallel worker'lar bilan ishlaydigan
+#: testlar uchun. 5 soniya saxiy: qulf odatda millisekundlarda bo'shaydi,
+#: chegara faqat "darhol yiqilmaslik" uchun.
+SQLITE_BUSY_TIMEOUT_MS: Final[int] = 5_000
 
 _engine: AsyncEngine | None = None
 _sessionmaker: async_sessionmaker[AsyncSession] | None = None
@@ -82,11 +87,28 @@ def create_engine() -> AsyncEngine:
     engine = create_async_engine(settings.DATABASE_URL, **_engine_kwargs())
 
     if settings.is_sqlite:
-        # SQLite'da foreign key'lar sukut bo'yicha o'chirilgan — yoqamiz
+        is_memory = ":memory:" in settings.DATABASE_URL
+
         @event.listens_for(engine.sync_engine, "connect")
-        def _enable_sqlite_fk(dbapi_connection: Any, _record: Any) -> None:
+        def _configure_sqlite(dbapi_connection: Any, _record: Any) -> None:
+            """Har yangi ulanishda SQLite PRAGMA'larini qo'yadi.
+
+            * `foreign_keys=ON` — SQLite'da sukut bo'yicha O'CHIRILGAN,
+              ya'ni busiz `ON DELETE CASCADE` ishlamaydi va testlar
+              yolg'on o'tadi.
+            * `journal_mode=WAL` — faqat FAYL bazasida. WAL bitta
+              yozuvchi va bir nechta o'quvchini bir vaqtda ishlashga
+              qo'yadi; standart `DELETE` rejimida esa o'quvchi
+              yozuvchini bloklaydi. Xotira bazasida WAL mavjud emas.
+            * `busy_timeout` — qulf band bo'lsa darhol xato qaytarish
+              o'rniga kutadi. Busiz parallel worker'lar bilan ishlaydigan
+              testlar "database is locked" bilan tasodifiy yiqilardi.
+            """
             cursor = dbapi_connection.cursor()
             cursor.execute("PRAGMA foreign_keys=ON")
+            if not is_memory:
+                cursor.execute("PRAGMA journal_mode=WAL")
+                cursor.execute(f"PRAGMA busy_timeout={SQLITE_BUSY_TIMEOUT_MS}")
             cursor.close()
 
     return engine
