@@ -245,10 +245,35 @@ def run_until(
                 return job
 
         expected = sorted(status.value for status in wanted)
-        raise AssertionError(
+
+        # ## Nega sabab BIRINCHI QATORDA
+        #
+        # pytest ning qisqa xulosasi (`FAILED ...`) xato xabarining
+        # faqat BIRINCHI qatorini ko'rsatadi, CI esa aynan shu qatorni
+        # `::error::` annotatsiyasi qilib chiqaradi (log'ni o'qish uchun
+        # admin huquqi kerak). Ya'ni tafsilot ikkinchi qatorga tushsa,
+        # CI'da KO'RINMAYDI.
+        #
+        # Buning narxini amalda ko'rdik: `test_node_runtime_executes`
+        # Linux'da yiqilganda xabar faqat "holatga kelmadi" derdi va
+        # sabab bir necha marta ko'r izlandi. Shuning uchun eng kerakli
+        # maydonlar bitta qatorga jipslashtirilgan, to'liq matn esa
+        # keyingi qatorlarda qoladi.
+        reason = job.failure_reason.value if job.failure_reason else None
+        empty = "(bo'sh)"
+        stderr_full = (job.stderr or "").strip().replace("\n", " | ")
+        stdout_full = (job.stdout or "").strip().replace("\n", " | ")
+        headline = (
             f"job {job_id} {max_cycles} siklda {expected} holatiga kelmadi "
-            f"(joriy holat: {JobStatus(job.status).value}, "
-            f"retry_count={job.retry_count})"
+            f"[holat={JobStatus(job.status).value} retry={job.retry_count} "
+            f"exit={job.exit_code} sabab={reason} "
+            f"stderr={stderr_full[:200] or empty}]"
+        )
+        raise AssertionError(
+            f"{headline}\n"
+            f"  error : {job.error or empty}\n"
+            f"  stderr: {stderr_full[:2000] or empty}\n"
+            f"  stdout: {stdout_full[:500] or empty}"
         )
 
     return run
