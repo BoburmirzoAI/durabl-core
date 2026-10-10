@@ -139,6 +139,22 @@ smoke_test() {
     # Sinov qanday tugasa ham vaqtinchalik katalog tozalanadi.
     trap 'rm -rf "$work"' RETURN
 
+    # `mktemp -d` katalogni 0700 bilan yaratadi — faqat egasi kirishi mumkin.
+    # Konteyner esa `--user 10001:10001` ostida ishlaydi va `result.json` ni
+    # SHU katalogga yozishi kerak, ya'ni 0700 yetmaydi.
+    #
+    # Nega bu macOS'da sezilmaydi: Docker Desktop bind-mount huquqlarini
+    # host foydalanuvchisiga moslaydi va uid farqini e'tiborsiz qoldiradi.
+    # Linux'da esa (CI va production) uid 10001 katalogga umuman kira
+    # olmaydi va sinov "result.json yozilmadi" bilan yiqiladi.
+    #
+    # Ayni yechim backendda ham bor: `WORKDIR_MODE` —
+    # `app/execution/sandbox_manager.py`. Ikkisi bir xil bo'lishi kerak,
+    # aks holda smoke test production yo'lini tekshirmagan bo'ladi.
+    # Xavfsizlik: katalog bir martalik, ichida sir yo'q va sinov tugashi
+    # bilan o'chiriladi.
+    chmod 0777 "$work"
+
     if [[ "$kind" == "python" ]]; then
         cat > "${work}/main.py" <<'SMOKE_PY'
 def main(x, factor=2):
