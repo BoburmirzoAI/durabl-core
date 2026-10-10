@@ -82,7 +82,10 @@ from app.schemas.job import (
     JOB_SORT_FIELDS,
     JobCancelResponse,
     JobCreate,
+    JobDeleteResponse,
     JobFilter,
+    JobIdempotency,
+    JobLeaseHistory,
     JobLogsResponse,
     JobRead,
     JobResultResponse,
@@ -497,6 +500,88 @@ async def cancel_job(user: CurrentUser, svc: JobSvc, job_id: JobId) -> JobCancel
     """Job'ni bekor qiladi."""
     job = await svc.cancel(user, job_id)
     return JobCancelResponse.model_validate(job)
+
+
+@router.post(
+    "/{job_id}/retry",
+    response_model=JobRead,
+    status_code=status.HTTP_200_OK,
+    summary="Job'ni qayta urinishga qo'yish",
+    description=(
+        "AYNI job'ni navbatga qaytaradi — `id` o'zgarmaydi va urinishlar "
+        "tarixi saqlanadi. Faqat `failed` yoki `dead_letter` holatidan "
+        "mumkin (holat mashinasi shunday belgilaydi). Tugagan job uchun "
+        "`POST /jobs/{id}/resubmit` ishlatiladi — u YANGI job yaratadi."
+    ),
+    responses=_errors(
+        *_JOB_ERRORS,
+        (409, "Job holati qayta urinishga yo'l qo'ymaydi"),
+    ),
+)
+async def retry_job(user: CurrentUser, svc: JobSvc, job_id: JobId) -> JobRead:
+    """Ayni job'ni qayta navbatga qo'yadi."""
+    job = await svc.retry(user, job_id)
+    return JobRead.model_validate(job)
+
+
+@router.delete(
+    "/{job_id}",
+    response_model=JobDeleteResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Job'ni o'chirish",
+    description=(
+        "Job yozuvini BUTUNLAY o'chiradi (yumshoq o'chirish emas) — "
+        "urinishlar, loglar va DLQ yozuvi ham cascade bilan ketadi. "
+        "Faqat TUGAGAN job o'chiriladi: ishlayotgan job o'chirilsa worker "
+        "mavjud bo'lmagan job ustida ishlab qolardi."
+    ),
+    responses=_errors(
+        *_JOB_ERRORS,
+        (409, "Job hali tugamagan — avval bekor qiling"),
+    ),
+)
+async def delete_job(user: CurrentUser, svc: JobSvc, job_id: JobId) -> JobDeleteResponse:
+    """Job'ni o'chiradi."""
+    return JobDeleteResponse(deleted=await svc.delete(user, job_id))
+
+
+@router.get(
+    "/{job_id}/lease-history",
+    response_model=JobLeaseHistory,
+    status_code=status.HTTP_200_OK,
+    summary="Lease tarixi",
+    description=(
+        "Worker job'ni qachon egalladi, qachon bo'shatdi va lease yo'qolib "
+        "job boshqa worker'ga o'tdimi. Durabl'ning \"worker qulasa job "
+        "yo'qolmaydi\" kafolatini KO'RINADIGAN qiladi.\n\n"
+        "Diqqat: heartbeat yangilanishlari DB'da saqlanmaydi (faqat "
+        "Redis'da), shuning uchun `total_renewals` 0 bo'lishi mumkin — "
+        "buni `renewals_persisted` maydoni ochiq ko'rsatadi."
+    ),
+    responses=_errors(*_JOB_ERRORS),
+)
+async def get_job_lease_history(user: CurrentUser, svc: JobSvc, job_id: JobId) -> JobLeaseHistory:
+    """Lease hodisalari vaqt o'qini qaytaradi."""
+    return JobLeaseHistory.model_validate(await svc.lease_history(user, job_id))
+
+
+@router.get(
+    "/{job_id}/idempotency",
+    response_model=JobIdempotency,
+    status_code=status.HTTP_200_OK,
+    summary="Takrorlanmaslik ma'lumoti",
+    description=(
+        "Kalit, so'rov tanasining barmoq izi va Redis yozuvining tugash "
+        'vaqti. "Men bu so\'rovni ikki marta yubordimmi?" savoliga javob '
+        "beradi.\n\n"
+        "Diqqat: so'rovlar jurnali saqlanmaydi, shuning uchun `requests` "
+        "har doim bo'sh — `requests_persisted` maydoni buni ko'rsatadi."
+    ),
+    responses=_errors(*_JOB_ERRORS),
+)
+async def get_job_idempotency(user: CurrentUser, svc: JobSvc, job_id: JobId) -> JobIdempotency:
+    """Idempotency ma'lumotini qaytaradi."""
+    return JobIdempotency.model_validate(await svc.idempotency_info(user, job_id))
 
 
 @router.post(

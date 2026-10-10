@@ -64,6 +64,7 @@ from app.exceptions import (
     InfrastructureError,
     JobNotCancellableError,
     JobNotFoundError,
+    JobNotRetryableError,
     ResultNotReadyError,
     ValidationError,
 )
@@ -74,6 +75,7 @@ from app.metrics import (
     track_job_completed,
     track_job_submitted,
 )
+from app.models.execution import Execution
 from app.models.execution_log import ExecutionLog
 from app.models.job import Job
 from app.models.user import User
@@ -93,7 +95,7 @@ from app.services.webhook_service import WebhookService
 from app.utils.security import generate_correlation_id
 from app.utils.serializers import job_event_payload
 from app.utils.time_utils import duration_ms as elapsed_ms
-from app.utils.time_utils import ensure_utc, isoformat, utcnow
+from app.utils.time_utils import ensure_utc, isoformat, seconds_from_now, utcnow
 from app.utils.validators import (
     assert_code_safe,
     next_cron_time,
@@ -597,6 +599,322 @@ class JobService:
             previous_status=previous,
         )
         return job
+
+    async def lease_history(self, user: User, job_id: uuid.UUID | str) -> dict[str, Any]:
+        """Lease hodisalari vaqt o'qi — "worker o'lsa job yo'qolmaydi" ni ko'rsatadi.
+
+        ## Ma'lumot QAYERDAN olinadi
+
+        `executions` jadvalidagi haqiqiy ustunlardan yig'iladi:
+
+        | Hodisa | Manba |
+        |---|---|
+        | `acquired` | `started_at` + `worker_id` + `lease_expires_at` |
+        | `released` | muvaffaqiyatli tugagan urinishning `finished_at` |
+        | `lost` | `failure_reason=LEASE_LOST` bo'lgan urinish |
+        | `expired` | tugamagan, lekin `lease_expires_at` o'tib ketgan |
+
+        ## `renewed` hodisalari NEGA YO'Q — bu to'qib chiqarilmaydi
+
+        Heartbeat ATAYLAB DB'ga tegmaydi (`app/workers/heartbeat.py`
+        docstring'i): bitta `AsyncSession` ni ikki `asyncio` vazifasida
+        parallel ishlatish SQLAlchemy'da aniqlanmagan xatti-harakat.
+        Yangilanishlar faqat Redis'da yashaydi va TTL bilan o'chadi.
+
+        Ya'ni har 5 soniyadagi yangilanishlar HECH QAYERDA
+        saqlanmaydi. Ularni davomiylikdan "hisoblab chiqarish" mumkin
+        edi, lekin bu o'lchov emas, taxmin bo'lardi — ishonchlilikni
+        sotayotgan mahsulot o'z ma'lumotini to'qib chiqarmasligi kerak.
+
+        Shuning uchun `total_renewals` — ro'yxatdagi HAQIQIY `renewed`
+        hodisalar soni (hozircha har doim 0), va `renewals_persisted`
+        maydoni buning sababini ochiq aytadi. Agar bu ma'lumot kerak
+        bo'lsa, alohida `lease_events` jadvali va heartbeat'dan yozish
+        kerak — har 5 soniyada yozuv, ya'ni sezilarli yuklama.
+
+        Returns:
+            Frontend `JobLeaseHistory` shartnomasiga mos lug'at.
+
+        Raises:
+            JobNotFoundError: Job topilmadi yoki boshqa foydalanuvchiga tegishli.
+        """
+        job = await self.get(user, job_id)
+        attempts = await self.executions.list_for_job(job.id)
+
+        now = utcnow()
+        events: list[dict[str, Any]] = []
+        previous_at: datetime | None = None
+
+        def add(
+            *,
+            execution: Execution,
+            kind: str,
+            at: datetime,
+            expires_at: datetime | None,
+            note: str | None,
+        ) -> None:
+            nonlocal previous_at
+            moment = ensure_utc(at)
+            since = None
+            if previous_at is not None and moment is not None:
+                since = int((moment - previous_at).total_seconds() * 1000)
+            events.append(
+                {
+                    # Hodisa alohida yozuv EMAS (jadval yo'q), shuning uchun
+                    # `id` urinish identifikatori + tur birikmasidan yasaladi.
+                    # Frontend uni faqat `key` sifatida ishlatadi.
+                    "id": f"{execution.id}:{kind}",
+                    "execution_id": execution.id,
+                    "attempt_number": execution.attempt_number,
+                    "kind": kind,
+                    "worker_id": execution.worker_id or "",
+                    "at": moment,
+                    "expires_at": ensure_utc(expires_at),
+                    "since_previous_ms": since,
+                    "note": note,
+                }
+            )
+            if moment is not None:
+                previous_at = moment
+
+        reassignments = 0
+        for execution in attempts:
+            if execution.started_at is not None:
+                add(
+                    execution=execution,
+                    kind="acquired",
+                    at=execution.started_at,
+                    expires_at=execution.lease_expires_at,
+                    note=f"{execution.attempt_number}-urinish boshlandi",
+                )
+
+            if execution.failure_reason is FailureReason.LEASE_LOST:
+                reassignments += 1
+                add(
+                    execution=execution,
+                    kind="lost",
+                    at=execution.finished_at or execution.updated_at,
+                    expires_at=execution.lease_expires_at,
+                    note="lease yo'qoldi — job boshqa worker'ga o'tdi",
+                )
+            elif execution.finished_at is not None:
+                add(
+                    execution=execution,
+                    kind="released",
+                    at=execution.finished_at,
+                    expires_at=None,
+                    note="urinish tugadi, lease bo'shatildi",
+                )
+            else:
+                lease_until = ensure_utc(execution.lease_expires_at)
+                if lease_until is None or lease_until >= now:
+                    continue
+                # Tugamagan, lekin muddati o'tgan — reaper hali yetib bormagan.
+                add(
+                    execution=execution,
+                    kind="expired",
+                    at=lease_until,
+                    expires_at=lease_until,
+                    note="lease muddati o'tdi — reaper tiklashi kutilmoqda",
+                )
+
+        return {
+            "job_id": job.id,
+            "events": events,
+            "ttl_seconds": settings.LEASE_TTL_SECONDS,
+            "heartbeat_interval_seconds": settings.HEARTBEAT_INTERVAL_SECONDS,
+            "total_renewals": sum(1 for event in events if event["kind"] == "renewed"),
+            "reassignments": reassignments,
+            # Shartnomadan TASHQARI maydon: `total_renewals` nega 0
+            # ekanini ochiq aytadi (yuqoridagi docstring'ga qarang).
+            "renewals_persisted": False,
+        }
+
+    async def idempotency_info(self, user: User, job_id: uuid.UUID | str) -> dict[str, Any]:
+        """Job'ning takrorlanmaslik ma'lumoti.
+
+        Mijoz "men bu so'rovni ikki marta yubordimmi?" degan savolga
+        javob topishi uchun.
+
+        ## Qaysi maydon qayerdan keladi
+
+        * `key` — `jobs.idempotency_key` (DB, doimiy);
+        * `fingerprint` — Redis yozuvidan, yo'q bo'lsa job maydonlaridan
+          QAYTA HISOBLANADI (`_job_fingerprint`), ya'ni kalit eskirgandan
+          keyin ham ko'rsatiladi;
+        * `expires_at` — Redis TTL'dan hisoblanadi;
+        * `was_deduplicated` — Redis yozuvi hamon SHU job'ga ishora
+          qilsa `True`: ya'ni ayni kalit bilan kelgan takroriy so'rov
+          yangi job yaratmasdan shu job'ni oladi.
+
+        ## `requests` tarixi NEGA BO'SH
+
+        So'rovlar jurnali hech qayerda saqlanmaydi: Redis'da faqat
+        JORIY yozuv bor (`state`, `job_id`, `fingerprint`), tarix emas.
+        Uni to'qib chiqarish o'rniga bo'sh ro'yxat qaytariladi va
+        `requests_persisted` maydoni sababini aytadi.
+
+        Agar tarix kerak bo'lsa, alohida jadval kerak — har
+        `POST /jobs` so'rovi uchun bitta yozuv.
+
+        Returns:
+            Frontend `JobIdempotency` shartnomasiga mos lug'at.
+
+        Raises:
+            JobNotFoundError: Job topilmadi yoki boshqa foydalanuvchiga tegishli.
+        """
+        job = await self.get(user, job_id)
+        key = job.idempotency_key
+
+        if key is None:
+            # Kalit berilmagan — har so'rov yangi job yaratgan.
+            return {
+                "job_id": job.id,
+                "key": None,
+                "fingerprint": None,
+                "was_deduplicated": False,
+                "expires_at": None,
+                "requests": [],
+                "requests_persisted": False,
+            }
+
+        record = await self.idempotency.lookup(user.id, key)
+        ttl = await self.idempotency.ttl_seconds(user.id, key)
+
+        fingerprint = record.fingerprint if record is not None else self._job_fingerprint(job)
+        points_here = record is not None and record.job_id == str(job.id)
+
+        return {
+            "job_id": job.id,
+            "key": key,
+            "fingerprint": fingerprint,
+            "was_deduplicated": points_here and record is not None and record.is_completed,
+            "expires_at": seconds_from_now(ttl) if ttl is not None else None,
+            "requests": [],
+            "requests_persisted": False,
+        }
+
+    async def retry(self, user: User, job_id: uuid.UUID | str) -> Job:
+        """AYNI job'ni navbatga qaytaradi (`resubmit` dan farqli).
+
+        ## `retry` va `resubmit` farqi
+
+        * `retry` — AYNI job qayta ishlaydi: `id` o'zgarmaydi, urinishlar
+          tarixi (`executions`) saqlanadi va ustiga qo'shiladi. Mijoz
+          DLQ'dagi job'ni tuzatib qayta uringanda aynan shu kerak —
+          dashboard'da bitta job qoladi, uning hikoyasi to'liq ko'rinadi.
+        * `resubmit` — YANGI job yaratadi, eskisi o'zgarmaydi. Bu
+          "shu kodni yana bir marta ishlat" degani.
+
+        ## Qaysi holatdan mumkin
+
+        Qoida O'YLAB TOPILMADI — holat mashinasidan keladi
+        (`JOB_STATUS_TRANSITIONS`): `FAILED` va `DEAD_LETTER` dan
+        `QUEUED` ga o'tish mumkin, `SUCCESS` va `CANCELLED` dan yo'q.
+        Shu tufayli qoida bitta joyda yashaydi va ikki marta
+        yozilmaydi.
+
+        `retry_count` ATAYLAB nolga qaytarilmaydi: u job'ning haqiqiy
+        tarixini ko'rsatadi. Lekin natija maydonlari tozalanadi — aks
+        holda mijoz yangi urinish ketayotganda eski xatoni ko'rib
+        turardi.
+
+        Raises:
+            JobNotFoundError: Job topilmadi yoki boshqa foydalanuvchiga tegishli.
+            JobNotRetryableError: Holat qayta urinishga yo'l bermaydi.
+        """
+        job = await self.get(user, job_id)
+        previous = JobStatus(job.status)
+
+        if not job_state.can_transition(previous, JobStatus.QUEUED):
+            raise JobNotRetryableError(
+                details={
+                    "status": previous.value,
+                    "allowed_from": sorted(
+                        status.value
+                        for status in JobStatus
+                        if job_state.can_transition(status, JobStatus.QUEUED)
+                    ),
+                    "hint": "Tugagan job uchun `POST /jobs/{id}/resubmit` ishlatiladi",
+                }
+            )
+
+        # Oldingi urinish natijasi tozalanadi — yangi urinish boshlanadi.
+        # `retry_count` va `executions` TEGILMAYDI: tarix saqlanadi.
+        job = await self.jobs.update(
+            job,
+            exit_code=None,
+            error=None,
+            failure_reason=None,
+            result=None,
+            stdout=None,
+            stderr=None,
+            duration_ms=None,
+            response_status=None,
+            started_at=None,
+            finished_at=None,
+        )
+        job = await self.requeue(job)
+
+        logger.info(
+            "job qayta urinishga qo'yildi",
+            job_id=str(job.id),
+            user_id=str(user.id),
+            previous_status=previous.value,
+            retry_count=job.retry_count,
+        )
+        return job
+
+    async def delete(self, user: User, job_id: uuid.UUID | str) -> bool:
+        """Job yozuvini butunlay o'chiradi.
+
+        ## Faqat TUGAGAN job
+
+        Ishlayotgan yoki navbatdagi job o'chirilsa, worker mavjud
+        bo'lmagan job ustida ishlab qolardi (lease Redis'da, yozuv
+        DB'da yo'q) — ya'ni "egasiz bajarish". Shuning uchun
+        tugamagan job uchun 409 qaytadi va mijozga avval bekor qilish
+        taklif qilinadi.
+
+        ## Nega YUMSHOQ o'chirish emas
+
+        `jobs` jadvalida `deleted_at` YO'Q. Mijoz "o'chirdim" deganda
+        ma'lumot haqiqatan ketishini kutadi (ayniqsa kod va payload
+        maxfiy bo'lishi mumkin). Bog'liq yozuvlar DB darajasidagi
+        `ON DELETE CASCADE` bilan ketadi: `executions`,
+        `execution_logs`, `webhook_deliveries`, `dlq_entries`.
+
+        Returns:
+            `True` — o'chirildi. Job topilmasa istisno tashlanadi,
+            shuning uchun `False` qaytmaydi (qiymat frontend
+            shartnomasi uchun saqlanadi).
+
+        Raises:
+            JobNotFoundError: Job topilmadi yoki boshqa foydalanuvchiga tegishli.
+            JobNotCancellableError: Job hali tugamagan.
+        """
+        job = await self.get(user, job_id)
+        status = JobStatus(job.status)
+
+        if not status.is_terminal:
+            raise JobNotCancellableError(
+                status,
+                details={
+                    "hint": "Avval `POST /jobs/{id}/cancel` bilan bekor qiling",
+                },
+            )
+
+        job_uuid = job.id
+        await self.jobs.delete(job)
+        await self.session.commit()
+
+        logger.info(
+            "job o'chirildi",
+            job_id=str(job_uuid),
+            user_id=str(user.id),
+            status=status.value,
+        )
+        return True
 
     async def resubmit(self, user: User, job_id: uuid.UUID | str) -> Job:
         """Mavjud job'ning kodi bilan YANGI job yaratadi.

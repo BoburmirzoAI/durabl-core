@@ -362,6 +362,31 @@ class IdempotencyService:
         """
         return await self._read(self._key(user_id, key), operation="lookup")
 
+    async def ttl_seconds(self, user_id: str | UUID, key: str) -> int | None:
+        """Kalit yozuvining qolgan muddati (soniya); yo'q bo'lsa `None`.
+
+        `GET /jobs/{id}/idempotency` uchun: mijoz "takroriy so'rovim
+        qachongacha ayni job'ni qaytaradi?" degan savolga javob oladi.
+
+        Redis `TTL` qaytaradigan maxsus qiymatlar tarjima qilinadi:
+        `-2` — kalit yo'q, `-1` — muddat qo'yilmagan. Ikkisi ham `None`
+        bo'ladi, chunki ikkisida ham "tugash vaqti" tushunchasi yo'q.
+
+        Xato TASHLAMAYDI: bu diagnostika ma'lumoti, Redis javob bermasa
+        `None` qaytaradi va asosiy javob baribir qaytariladi.
+        """
+        try:
+            raw = await self.redis.ttl(self._key(user_id, key))
+        except RedisError as exc:
+            logger.warning(
+                "idempotency.ttl_unavailable",
+                error=str(exc),
+                error_type=type(exc).__name__,
+            )
+            return None
+        value = int(raw)
+        return value if value >= 0 else None
+
 
 __all__ = [
     "MAX_RESERVE_ATTEMPTS",

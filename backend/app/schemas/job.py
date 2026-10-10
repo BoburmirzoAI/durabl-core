@@ -29,6 +29,7 @@ from app.constants import (
     HttpMethod,
     JobKind,
     JobStatus,
+    LeaseEventKind,
     Priority,
     Runtime,
 )
@@ -487,6 +488,132 @@ class JobRead(JobSummary):
     stdout: str | None = Field(default=None, description="Standart chiqish oqimi")
     stderr: str | None = Field(default=None, description="Xato oqimi")
     error: str | None = Field(default=None, description="Durabl aniqlagan xato matni")
+
+
+class JobDeleteResponse(DurablSchema):
+    """`DELETE /jobs/{id}` javobi."""
+
+    deleted: bool = Field(description="Yozuv o'chirildimi (`True` — ha)")
+
+
+class LeaseEventRead(DurablSchema):
+    """Lease hayot siklidagi bitta hodisa.
+
+    Hodisalar ALOHIDA jadvalda saqlanmaydi — `executions` ustunlaridan
+    yig'iladi (`JobService.lease_history` docstring'iga qarang).
+    """
+
+    id: str = Field(
+        description="`{execution_id}:{kind}` — hodisa alohida yozuv emas, UI uchun kalit"
+    )
+    execution_id: uuid.UUID = Field(description="Qaysi urinishga tegishli")
+    attempt_number: Annotated[int, Field(ge=1)] = Field(description="Nechanchi urinish")
+    kind: LeaseEventKind = Field(description="Hodisa turi")
+    worker_id: str = Field(default="", description="Lease'ni egallagan worker")
+    at: datetime = Field(description="Hodisa vaqti (UTC)")
+    expires_at: datetime | None = Field(
+        default=None, description="Shu paytdagi lease muddati (UTC)"
+    )
+    since_previous_ms: int | None = Field(
+        default=None, description="Oldingi hodisadan o'tgan vaqt (ms)"
+    )
+    note: str | None = Field(default=None, description="Odam o'qiydigan izoh")
+
+
+class JobLeaseHistory(DurablSchema):
+    """`GET /jobs/{id}/lease-history` — "job yo'qolmaydi" va'dasini ko'rsatadi.
+
+    ## `total_renewals` NEGA 0 bo'lishi mumkin
+
+    Heartbeat ATAYLAB DB'ga tegmaydi (`app/workers/heartbeat.py`):
+    yangilanishlar faqat Redis'da yashaydi va TTL bilan o'chadi. Ya'ni
+    har 5 soniyadagi yangilanish hech qayerda saqlanmaydi.
+
+    Ularni davomiylikdan "hisoblab chiqarish" mumkin edi, lekin bu
+    o'lchov emas, TAXMIN bo'lardi. Ishonchlilikni sotayotgan mahsulot
+    o'z ma'lumotini to'qib chiqarmasligi kerak, shuning uchun
+    `renewals_persisted=False` ochiq qaytariladi va UI "qayd
+    etilmagan" deb ko'rsatishi mumkin.
+    """
+
+    job_id: uuid.UUID = Field(description="Job identifikatori")
+    events: list[LeaseEventRead] = Field(
+        default_factory=list, description="Vaqt bo'yicha tartiblangan hodisalar"
+    )
+    ttl_seconds: Annotated[int, Field(ge=1)] = Field(description="Lease TTL (sozlamadan)")
+    heartbeat_interval_seconds: Annotated[int, Field(ge=1)] = Field(
+        description="Heartbeat davri (sozlamadan)"
+    )
+    total_renewals: Annotated[int, Field(ge=0)] = Field(
+        default=0, description="HAQIQIY `renewed` hodisalar soni (saqlanmasa 0)"
+    )
+    reassignments: Annotated[int, Field(ge=0)] = Field(
+        default=0, description="Lease yo'qolib job boshqa worker'ga o'tgan holatlar soni"
+    )
+    renewals_persisted: bool = Field(
+        default=False,
+        description=(
+            "Heartbeat yangilanishlari DB'da saqlanadimi. `False` — "
+            "`total_renewals` 0 bo'lishi ma'lumot yo'qligini bildiradi, "
+            "yangilanish bo'lmaganini EMAS."
+        ),
+    )
+
+
+class IdempotencyRequestRead(DurablSchema):
+    """Ayni kalit bilan kelgan bitta so'rov.
+
+    HOZIRCHA hech qachon qaytarilmaydi — so'rovlar jurnali saqlanmaydi
+    (`JobIdempotency.requests_persisted` ga qarang). Shakl frontend
+    shartnomasi uchun e'lon qilingan.
+    """
+
+    at: datetime = Field(description="So'rov vaqti (UTC)")
+    status_code: int = Field(description="Javob kodi: 201 yangi, 200 takroriy, 409 ziddiyat")
+    outcome: Literal["created", "deduplicated", "conflict"] = Field(description="Natija")
+    source: str = Field(description="So'rov manbasi (SDK, curl, dashboard)")
+    request_id: str = Field(description="So'rov identifikatori")
+
+
+class JobIdempotency(DurablSchema):
+    """`GET /jobs/{id}/idempotency` — "ikki marta yubordimmi?" savoliga javob.
+
+    ## `requests` NEGA BO'SH
+
+    Redis'da faqat JORIY yozuv bor (`state`, `job_id`, `fingerprint`) —
+    tarix emas. So'rovlar jurnalini saqlash uchun alohida jadval kerak
+    (har `POST /jobs` uchun bitta yozuv). Shu sababli ro'yxat bo'sh
+    qaytadi va `requests_persisted=False` buni ochiq aytadi.
+    """
+
+    job_id: uuid.UUID = Field(description="Job identifikatori")
+    key: str | None = Field(
+        default=None, description="Takrorlanmaslik kaliti (`null` — berilmagan)"
+    )
+    fingerprint: str | None = Field(
+        default=None,
+        description=(
+            "So'rov tanasining SHA-256 izi. Redis yozuvi eskirgan bo'lsa "
+            "job maydonlaridan qayta hisoblanadi."
+        ),
+    )
+    was_deduplicated: bool = Field(
+        default=False,
+        description=(
+            "Redis yozuvi hamon shu job'ga ishora qiladimi — ya'ni ayni kalit "
+            "bilan kelgan takroriy so'rov yangi job yaratmasdan shu job'ni oladi."
+        ),
+    )
+    expires_at: datetime | None = Field(
+        default=None, description="Redis yozuvining tugash vaqti (UTC)"
+    )
+    requests: list[IdempotencyRequestRead] = Field(
+        default_factory=list, description="Ayni kalit bilan kelgan so'rovlar"
+    )
+    requests_persisted: bool = Field(
+        default=False,
+        description="So'rovlar jurnali saqlanadimi. `False` — `requests` har doim bo'sh.",
+    )
 
 
 class JobStatusResponse(ORMSchema):

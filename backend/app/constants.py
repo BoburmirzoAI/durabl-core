@@ -265,6 +265,31 @@ class AuditAction(StrEnum):
     PLAN_CHANGED = "plan.changed"
 
 
+class LeaseEventKind(StrEnum):
+    """Lease hayot siklidagi hodisa turi (`GET /jobs/{id}/lease-history`).
+
+    Hodisalar ALOHIDA jadvalda saqlanmaydi — `executions` ustunlaridan
+    yig'iladi. Shuning uchun ba'zi turlar amalda chiqmaydi:
+
+    * `ACQUIRED` — `executions.started_at` dan (har doim bor);
+    * `RELEASED` — muvaffaqiyatli tugagan urinishdan;
+    * `LOST` — `failure_reason=LEASE_LOST` bo'lgan urinishdan;
+    * `EXPIRED` — tugamagan, lekin `lease_expires_at` o'tib ketgan;
+    * `REAPED` — reaper tiklagan (hozircha `LOST` bilan birlashadi);
+    * `RENEWED` — heartbeat yangilanishi. **Hozircha HECH QACHON
+      chiqmaydi**: heartbeat ataylab DB'ga tegmaydi, yangilanishlar
+      faqat Redis'da yashaydi. Tur shartnoma to'liqligi uchun e'lon
+      qilingan — kelgusida `lease_events` jadvali qo'shilsa ishlaydi.
+    """
+
+    ACQUIRED = "acquired"
+    RENEWED = "renewed"
+    EXPIRED = "expired"
+    RELEASED = "released"
+    REAPED = "reaped"
+    LOST = "lost"
+
+
 class WorkerState(StrEnum):
     """Worker holati (admin panel uchun)."""
 
@@ -617,6 +642,7 @@ __all__ = [
     "HttpMethod",
     "JobKind",
     "JobStatus",
+    "LeaseEventKind",
     "LogStream",
     "LoginMethod",
     "LoginResult",
