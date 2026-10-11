@@ -42,7 +42,14 @@ from fastapi import APIRouter, Path, Query, Response, status
 
 from app.api.v1.auth import JwtUser
 from app.dependencies import AuthSvc, Pagination
-from app.schemas.api_key import ApiKeyCreate, ApiKeyCreated, ApiKeyRead
+from app.schemas.api_key import (
+    ApiKeyCreate,
+    ApiKeyCreated,
+    ApiKeyExpiryUpdate,
+    ApiKeyRead,
+    ApiKeyRotation,
+    ApiKeyScopesUpdate,
+)
 from app.schemas.base import ErrorResponse, PaginatedResponse, SuccessResponse
 
 router = APIRouter(prefix="/api-keys", tags=["api-keys"])
@@ -119,6 +126,120 @@ async def create_api_key(
     # uzatish mumkin emas.
     fields = ApiKeyRead.model_validate(api_key).model_dump(include=set(ApiKeyRead.model_fields))
     return ApiKeyCreated(**fields, key=raw_key)
+
+
+#: Yo'l parametri — barcha bitta kalitga murojaat qiladigan yo'llarda.
+KeyId = Annotated[uuid.UUID, Path(description="Kalit identifikatori")]
+
+#: Bitta kalitga murojaat qiladigan yo'llardagi umumiy xatolar.
+_KEY_ERRORS: tuple[tuple[int, str], ...] = (
+    (401, "Autentifikatsiya ma'lumoti yo'q yoki yaroqsiz"),
+    (403, "API kalit bilan ruxsat etilmaydi yoki hisob faolsizlantirilgan"),
+    (404, "Bunday kalit yo'q yoki boshqa foydalanuvchiga tegishli"),
+)
+
+
+@router.get(
+    "/{key_id}",
+    response_model=ApiKeyRead,
+    status_code=status.HTTP_200_OK,
+    summary="Bitta API kalit",
+    description=(
+        "Kalit tafsiloti — xom qiymat QAYTARILMAYDI (u faqat yaratilgan va "
+        "almashtirilgan paytda bir marta ko'rsatiladi)."
+    ),
+    responses=_errors(*_KEY_ERRORS),
+)
+async def get_api_key(user: JwtUser, svc: AuthSvc, key_id: KeyId) -> ApiKeyRead:
+    """Bitta kalitni qaytaradi."""
+    return ApiKeyRead.model_validate(await svc.get_api_key(user, key_id))
+
+
+@router.put(
+    "/{key_id}/scopes",
+    response_model=ApiKeyRead,
+    status_code=status.HTTP_200_OK,
+    summary="Kalit huquqlarini o'zgartirish",
+    description=(
+        "Ruxsatlar ro'yxatini BUTUNLAY almashtiradi (qo'shmaydi). Bekor "
+        "qilingan kalit uchun 409.\n\n"
+        "Diqqat: scope'lar hozircha saqlanadi, lekin endpointlar tomonidan "
+        "MAJBURLANMAYDI — `jobs:read` bergan kalit ham to'liq huquqqa ega."
+    ),
+    responses=_errors(
+        *_KEY_ERRORS,
+        (409, "Kalit bekor qilingan"),
+        (422, "Ruxsatlar ro'yxati noto'g'ri"),
+    ),
+)
+async def update_api_key_scopes(
+    user: JwtUser,
+    svc: AuthSvc,
+    key_id: KeyId,
+    data: ApiKeyScopesUpdate,
+) -> ApiKeyRead:
+    """Kalit huquqlarini almashtiradi."""
+    return ApiKeyRead.model_validate(await svc.update_api_key_scopes(user, key_id, data.scopes))
+
+
+@router.put(
+    "/{key_id}/expiry",
+    response_model=ApiKeyRead,
+    status_code=status.HTTP_200_OK,
+    summary="Kalit muddatini o'zgartirish",
+    description=(
+        "Muddatni uzaytiradi, qisqartiradi yoki butunlay olib tashlaydi "
+        "(`expires_at: null`). O'tmishdagi vaqt rad etiladi — kalitni darhol "
+        "to'xtatish uchun `DELETE /api-keys/{id}` ishlatiladi."
+    ),
+    responses=_errors(
+        *_KEY_ERRORS,
+        (409, "Kalit bekor qilingan"),
+        (422, "Muddat o'tmishda"),
+    ),
+)
+async def update_api_key_expiry(
+    user: JwtUser,
+    svc: AuthSvc,
+    key_id: KeyId,
+    data: ApiKeyExpiryUpdate,
+) -> ApiKeyRead:
+    """Kalit muddatini o'zgartiradi."""
+    return ApiKeyRead.model_validate(await svc.update_api_key_expiry(user, key_id, data.expires_at))
+
+
+@router.post(
+    "/{key_id}/rotate",
+    response_model=ApiKeyRotation,
+    status_code=status.HTTP_200_OK,
+    summary="API kalitni almashtirish",
+    description=(
+        "Kalit qiymatini JOYIDA almashtiradi: `id`, nom va huquqlar "
+        "saqlanadi. Eski kalit darhol o'lmaydi — unga qisqa grace muddati "
+        "beriladi, shunda mijoz yangi kalitni CI, server va lokal muhitga "
+        "tarqatib ulguradi.\n\n"
+        "Kalit HAQIQATAN sizib ketgan bo'lsa, rotatsiya emas, "
+        "`DELETE /api-keys/{id}` ishlatiladi — u grace bermaydi."
+    ),
+    responses=_errors(
+        *_KEY_ERRORS,
+        (409, "Kalit bekor qilingan"),
+    ),
+)
+async def rotate_api_key(user: JwtUser, svc: AuthSvc, key_id: KeyId) -> ApiKeyRotation:
+    """Kalitni almashtiradi va YANGI xom qiymatni bir marta qaytaradi."""
+    api_key, raw_key = await svc.rotate_api_key(user, key_id)
+    # `rotated_at` va `previous_key_expires_at` `rotate_api_key()` da
+    # birga yoziladi, ya'ni ikkisi ham to'ldirilgan bo'lishi KAFOLATLI.
+    assert api_key.rotated_at is not None
+    assert api_key.previous_key_expires_at is not None
+    return ApiKeyRotation(
+        key_id=api_key.id,
+        key=raw_key,
+        masked_key=api_key.masked,
+        rotated_at=api_key.rotated_at,
+        old_key_valid_until=api_key.previous_key_expires_at,
+    )
 
 
 @router.delete(

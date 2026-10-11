@@ -88,6 +88,16 @@ class ApiKeyRead(ORMSchema):
     revoked_at: datetime | None = Field(
         default=None, description="Bekor qilingan vaqt (UTC); `null` — bekor qilinmagan"
     )
+    rotated_at: datetime | None = Field(
+        default=None, description="Oxirgi rotatsiya vaqti (UTC); `null` — hech almashtirilmagan"
+    )
+    previous_key_expires_at: datetime | None = Field(
+        default=None,
+        description=(
+            "ESKI kalit qachongacha ishlaydi (rotatsiyadan keyingi grace oynasi). "
+            "`null` — eski kalit yo'q yoki muddati tugagan."
+        ),
+    )
     created_at: datetime = Field(description="Yaratilgan vaqt (UTC)")
     updated_at: datetime | None = Field(default=None, description="Oxirgi o'zgartirish vaqti (UTC)")
 
@@ -110,6 +120,88 @@ class ApiKeyRead(ORMSchema):
         return self.revoked_at is None and not is_expired(self.expires_at)
 
 
+class ApiKeyScopesUpdate(DurablSchema):
+    """`PUT /api-keys/{id}/scopes` — huquqlarni almashtirish.
+
+    Ro'yxat BUTUNLAY almashtiriladi (qo'shilmaydi): mijoz scope
+    muharririda yakuniy to'plamni yuboradi, ya'ni "qo'shish/olib
+    tashlash" farqini hisoblash frontend vazifasi emas.
+    """
+
+    scopes: list[str] = Field(
+        description=(
+            "Yakuniy ruxsatlar to'plami. Bo'sh ro'yxat — barcha standart huquqlar (eng tor doira)."
+        ),
+        examples=[["jobs:read", "jobs:write"]],
+    )
+
+    @field_validator("scopes")
+    @classmethod
+    def _check_scopes(cls, value: list[str]) -> list[str]:
+        """Takrorlanishni olib tashlaydi va sonini tekshiradi.
+
+        ## DIQQAT — scope'lar hozircha MAJBURLANMAYDI
+
+        Qiymat DB'ga yoziladi va API'da qaytariladi, lekin hech bir
+        endpoint uni TEKSHIRMAYDI: `jobs:read` bergan kalit ham to'liq
+        huquqqa ega bo'lib qoladi.
+
+        Shu sababli bu validator noma'lum qiymatni ham qabul qiladi —
+        `ApiKeyCreate` bilan AYNI xulq. Ikki joyda farqli qoida bo'lsa,
+        mijoz `POST` da o'tgan qiymatni `PUT` da rad etilganini ko'rib
+        chalkashardi.
+
+        Majburlash qo'shilganda (`require_scope` dependency) bu yerda
+        ham qat'iy ro'yxat tekshiruvi paydo bo'lishi kerak.
+        """
+        unique: list[str] = []
+        for scope in value:
+            if scope not in unique:
+                unique.append(scope)
+        if len(unique) > MAX_API_KEY_SCOPES:
+            raise ValueError(f"Ruxsatlar soni {MAX_API_KEY_SCOPES} dan oshmasligi kerak")
+        return unique
+
+
+class ApiKeyExpiryUpdate(DurablSchema):
+    """`PUT /api-keys/{id}/expiry` — muddatni o'zgartirish."""
+
+    expires_at: datetime | None = Field(
+        default=None,
+        description=(
+            "Yangi muddat (ISO-8601, UTC). `null` — muddat olib tashlanadi "
+            "(kalit muddatsiz bo'ladi). O'tmishdagi vaqt RAD ETILADI: u "
+            "kalitni darhol o'ldirardi, buning uchun `DELETE /api-keys/{id}` bor."
+        ),
+    )
+
+
+class ApiKeyRotation(DurablSchema):
+    """`POST /api-keys/{id}/rotate` javobi.
+
+    Kalit JOYIDA almashtiriladi: `key_id`, nom va huquqlar saqlanadi,
+    faqat qiymat o'zgaradi. Shu tufayli mijozning dashboard'dagi
+    havolasi va statistikasi uzilmaydi.
+    """
+
+    key_id: uuid.UUID = Field(description="Kalit identifikatori — rotatsiyada O'ZGARMAYDI")
+    key: str = Field(
+        description=(
+            "YANGI to'liq kalit. Bu qiymat boshqa hech qachon qaytarilmaydi — "
+            "xavfsiz joyda saqlang."
+        ),
+        examples=["durabl_sXq7...uZ2k"],
+    )
+    masked_key: str = Field(description="Yangi kalitning niqoblangan ko'rinishi")
+    rotated_at: datetime = Field(description="Rotatsiya vaqti (UTC)")
+    old_key_valid_until: datetime = Field(
+        description=(
+            "Eski kalit qachongacha ishlaydi. Darhol bekor qilish ishlab turgan "
+            "integratsiyani uzadi, shuning uchun qisqa muddat beriladi."
+        )
+    )
+
+
 class ApiKeyCreated(ApiKeyRead):
     """`POST /api-keys` javobi — xom kalit FAQAT shu yerda ko'rsatiladi."""
 
@@ -127,5 +219,8 @@ __all__ = [
     "MAX_API_KEY_SCOPES",
     "ApiKeyCreate",
     "ApiKeyCreated",
+    "ApiKeyExpiryUpdate",
     "ApiKeyRead",
+    "ApiKeyRotation",
+    "ApiKeyScopesUpdate",
 ]

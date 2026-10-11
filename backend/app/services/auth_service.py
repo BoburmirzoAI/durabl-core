@@ -24,6 +24,7 @@ kalit faqat niqoblangan ko'rinishda (`mask_api_key`) yoziladi.
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timedelta
 from functools import lru_cache
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -31,6 +32,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.exceptions import (
     ApiKeyNotFoundError,
+    ApiKeyRevokedError,
     DatabaseError,
     DuplicateEmailError,
     InactiveUserError,
@@ -65,7 +67,7 @@ from app.utils.security import (
     validate_password_strength,
     verify_password,
 )
-from app.utils.time_utils import ensure_utc, utcnow
+from app.utils.time_utils import ensure_utc, isoformat, utcnow
 
 logger = get_logger(__name__)
 
@@ -79,6 +81,17 @@ MAX_ACTIVE_API_KEYS: int = 20
 #: bajariladigan so'rovga keraksiz yozish qo'shadi (va WAL/replikatsiyani
 #: shishiradi). Bizga "kalit taxminan qachon ishlatilgan" yetarli.
 API_KEY_TOUCH_INTERVAL_SECONDS: float = 60.0
+
+#: Rotatsiyadan keyin ESKI kalit qancha vaqt ishlaydi (soat).
+#:
+#: 24 soat — mijozga yangi kalitni CI, server va lokal muhitga tarqatish
+#: uchun bir ish kuni. Darhol bekor qilish ishlab turgan integratsiyani
+#: uzadi, uzoq muddat esa buzilgan kalitni ochiq qoldiradi.
+#:
+#: Agar kalit HAQIQATAN sizib ketgan bo'lsa, rotatsiya emas,
+#: `DELETE /api-keys/{id}` (bekor qilish) ishlatiladi — u darhol ta'sir
+#: qiladi va grace bermaydi.
+API_KEY_ROTATION_GRACE_HOURS: int = 24
 
 #: Soxta hash uchun parol — hech qachon haqiqiy hisobga mos kelmaydi.
 _TIMING_GUARD_PASSWORD = "durabl-timing-guard-not-a-real-password"
@@ -280,7 +293,25 @@ class AuthService:
         if not candidate or not is_api_key_format(candidate):
             raise InvalidApiKeyError()
 
-        api_key = await self.api_keys.get_by_hash(hash_api_key(candidate), with_user=True)
+        candidate_hash = hash_api_key(candidate)
+        api_key = await self.api_keys.get_by_hash(candidate_hash, with_user=True)
+
+        # Rotatsiyadan keyingi grace oynasi: eski kalit ham qabul
+        # qilinadi, lekin FAQAT muddati o'tmagan bo'lsa
+        # (`has_valid_previous_key` ikki shartni birga tekshiradi).
+        rotated_from_previous = False
+        if api_key is None:
+            api_key = await self.api_keys.get_by_previous_hash(candidate_hash, with_user=True)
+            if api_key is not None:
+                if not api_key.has_valid_previous_key:
+                    logger.warning(
+                        "rotatsiya muddati tugagan eski kalit bilan so'rov",
+                        api_key=mask_api_key(candidate),
+                        api_key_id=str(api_key.id),
+                    )
+                    raise InvalidApiKeyError()
+                rotated_from_previous = True
+
         if api_key is None or not api_key.is_valid:
             logger.warning(
                 "yaroqsiz API kalit bilan so'rov",
@@ -293,6 +324,17 @@ class AuthService:
         user = api_key.user
         if not user.is_active:
             raise InactiveUserError()
+
+        if rotated_from_previous:
+            # Mijoz hali yangi kalitga o'tmagan — buni ko'rish kerak,
+            # aks holda grace oynasi tugaganda so'rovlar sababsiz
+            # yiqilib qoladi va sababi noma'lum bo'ladi.
+            logger.info(
+                "eski (rotatsiya qilingan) kalit bilan so'rov",
+                api_key_id=str(api_key.id),
+                user_id=str(user.id),
+                previous_key_expires_at=api_key.previous_key_expires_at,
+            )
 
         if self._needs_touch(api_key):
             await self.api_keys.touch(api_key)
@@ -358,6 +400,182 @@ class AuthService:
         `include_revoked=False` — bekor qilinganlar ro'yxatga kirmaydi.
         """
         return await self.api_keys.list_for_user(user.id, include_revoked=include_revoked)
+
+    async def get_api_key(self, user: User, key_id: uuid.UUID | str) -> ApiKey:
+        """Bitta kalitni egalik tekshiruvi bilan oladi.
+
+        Boshqa foydalanuvchining kaliti ham "topilmadi" deb qaytariladi —
+        kalit mavjudligini oshkor qilmaymiz (IDOR himoyasi).
+
+        Raises:
+            ApiKeyNotFoundError: Kalit yo'q yoki boshqa foydalanuvchiga tegishli.
+        """
+        api_key = await self.api_keys.get_for_user(key_id, user.id)
+        if api_key is None:
+            raise ApiKeyNotFoundError(key_id)
+        return api_key
+
+    async def update_api_key_scopes(
+        self,
+        user: User,
+        key_id: uuid.UUID | str,
+        scopes: list[str],
+    ) -> ApiKey:
+        """Kalitning ruxsat doiralarini almashtiradi.
+
+        Ro'yxat BUTUNLAY almashtiriladi (qo'shilmaydi) — mijoz scope
+        muharririda yakuniy to'plamni yuboradi.
+
+        Bekor qilingan kalitni o'zgartirish ma'nosiz, shuning uchun 409
+        qaytadi: mijoz yangi kalit yaratishi kerak.
+
+        Raises:
+            ApiKeyNotFoundError: Kalit yo'q yoki boshqa foydalanuvchiga tegishli.
+            ApiKeyRevokedError: Kalit bekor qilingan.
+        """
+        api_key = await self.get_api_key(user, key_id)
+        self._assert_mutable(api_key)
+
+        previous = list(api_key.scopes or [])
+        api_key = await self.api_keys.update(api_key, scopes=list(scopes))
+        await self.session.commit()
+
+        logger.info(
+            "API kalit huquqlari o'zgartirildi",
+            user_id=str(user.id),
+            api_key_id=str(api_key.id),
+            previous_scopes=previous,
+            scopes=list(api_key.scopes or []),
+        )
+        return api_key
+
+    async def update_api_key_expiry(
+        self,
+        user: User,
+        key_id: uuid.UUID | str,
+        expires_at: datetime | None,
+    ) -> ApiKey:
+        """Kalitning amal qilish muddatini o'zgartiradi.
+
+        `expires_at=None` — muddat olib tashlanadi (kalit muddatsiz
+        bo'ladi). Bu ATAYLAB ruxsat etilgan: mijoz muddatni uzaytirishni
+        ham, olib tashlashni ham xohlashi mumkin.
+
+        O'tmishdagi vaqt RAD ETILADI: u kalitni darhol o'ldirardi, ya'ni
+        amalda "bekor qilish" bo'lardi. Buning uchun ochiq
+        `DELETE /api-keys/{id}` bor — niyat aniq bo'lishi kerak.
+
+        Raises:
+            ApiKeyNotFoundError: Kalit yo'q yoki boshqa foydalanuvchiga tegishli.
+            ApiKeyRevokedError: Kalit bekor qilingan.
+            ValidationError: Muddat o'tmishda.
+        """
+        api_key = await self.get_api_key(user, key_id)
+        self._assert_mutable(api_key)
+
+        moment = ensure_utc(expires_at)
+        if moment is not None and moment <= utcnow():
+            raise ValidationError(
+                "Muddat o'tmishda bo'lishi mumkin emas — kalitni bekor qilish uchun "
+                "`DELETE /api-keys/{id}` ishlatiladi",
+                details={"expires_at": isoformat(moment)},
+            )
+
+        previous = api_key.expires_at
+        api_key = await self.api_keys.update(api_key, expires_at=moment)
+        await self.session.commit()
+
+        logger.info(
+            "API kalit muddati o'zgartirildi",
+            user_id=str(user.id),
+            api_key_id=str(api_key.id),
+            previous_expires_at=previous,
+            expires_at=api_key.expires_at,
+        )
+        return api_key
+
+    async def rotate_api_key(
+        self,
+        user: User,
+        key_id: uuid.UUID | str,
+    ) -> tuple[ApiKey, str]:
+        """Kalitni joyida almashtiradi; eski kalit qisqa muddat ishlaydi.
+
+        ## Nega joyida, yangi yozuv emas
+
+        Yangi qator yaratilsa `id` o'zgarardi va mijozning
+        dashboard'dagi havolasi, nomi va statistikasi uzilib qolardi.
+        Joyida almashtirishda `id`, nomi va huquqlari saqlanadi.
+
+        ## Grace oynasi
+
+        Eski hash `previous_key_hash` ga ko'chiriladi va
+        `API_KEY_ROTATION_GRACE_HOURS` beriladi. Shu oynada IKKI kalit
+        ham ishlaydi — mijoz yangisini CI, server va lokal muhitga
+        tarqatib ulguradi.
+
+        Qisqa oyna emas, nolga teng oyna xavfli: darhol bekor qilish
+        ishlab turgan barcha integratsiyani BIR VAQTDA uzadi.
+
+        ## Takroriy rotatsiya
+
+        Grace oynasi ichida ikkinchi marta rotatsiya qilinsa, BIRINCHI
+        eski kalit darhol o'ladi (bitta `previous_key_hash` ustuni bor).
+        Bu ataylab: zanjir cheksiz uzaytirilsa, sizib ketgan kalit
+        uzoq vaqt ochiq qolardi.
+
+        Returns:
+            `(kalit_yozuvi, yangi_xom_kalit)` juftligi. Xom kalit FAQAT
+            shu javobda qaytadi.
+
+        Raises:
+            ApiKeyNotFoundError: Kalit yo'q yoki boshqa foydalanuvchiga tegishli.
+            ApiKeyRevokedError: Kalit bekor qilingan.
+        """
+        api_key = await self.get_api_key(user, key_id)
+        self._assert_mutable(api_key)
+
+        old_hash = api_key.key_hash
+        generated = generate_api_key()
+        now = utcnow()
+
+        api_key = await self.api_keys.update(
+            api_key,
+            key_hash=generated.key_hash,
+            key_prefix=generated.key_prefix,
+            last_four=generated.last_four,
+            previous_key_hash=old_hash,
+            previous_key_expires_at=now + timedelta(hours=API_KEY_ROTATION_GRACE_HOURS),
+            rotated_at=now,
+        )
+        await self.session.commit()
+
+        logger.info(
+            "API kalit almashtirildi",
+            user_id=str(user.id),
+            api_key_id=str(api_key.id),
+            api_key=api_key.masked,
+            old_key_valid_until=api_key.previous_key_expires_at,
+            grace_hours=API_KEY_ROTATION_GRACE_HOURS,
+        )
+        return api_key, generated.raw
+
+    @staticmethod
+    def _assert_mutable(api_key: ApiKey) -> None:
+        """Bekor qilingan kalitni o'zgartirishni taqiqlaydi.
+
+        Bekor qilish YAKUNIY: uni "orqaga qaytarish" mijozni chalg'itadi
+        (kalit qiymati baribir yo'qolgan). Shuning uchun huquq, muddat va
+        rotatsiya amallari 409 beradi.
+        """
+        if api_key.is_revoked:
+            raise ApiKeyRevokedError(
+                details={
+                    "api_key_id": str(api_key.id),
+                    "revoked_at": isoformat(api_key.revoked_at),
+                    "hint": "Yangi kalit yaratish uchun `POST /api-keys`",
+                }
+            )
 
     async def revoke_api_key(self, user: User, key_id: uuid.UUID | str) -> None:
         """Kalitni bekor qiladi (o'chirmaydi — audit uchun yozuv qoladi).

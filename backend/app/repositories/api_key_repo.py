@@ -46,6 +46,23 @@ class ApiKeyRepository(BaseRepository[ApiKey]):
         result = await self._execute(stmt)
         return result.scalars().first()
 
+    async def get_by_previous_hash(
+        self, key_hash: str, *, with_user: bool = False
+    ) -> ApiKey | None:
+        """ESKI (rotatsiya qilingan) hash bo'yicha kalit.
+
+        Rotatsiyadan keyingi grace oynasida mijozning eski kaliti ham
+        ishlashi kerak. Muddat tekshiruvi BU YERDA qilinmaydi —
+        `AuthService` uni `has_valid_previous_key` bilan tekshiradi,
+        chunki muddati o'tgan eski kalit uchun log xabari boshqa
+        bo'lishi kerak ("muddati tugagan" va "topilmadi" farqli).
+        """
+        stmt: Select[Any] = select(ApiKey).where(ApiKey.previous_key_hash == key_hash).limit(1)
+        if with_user:
+            stmt = stmt.options(selectinload(ApiKey.user))
+        result = await self._execute(stmt)
+        return result.scalars().first()
+
     async def list_for_user(
         self,
         user_id: uuid.UUID | str,

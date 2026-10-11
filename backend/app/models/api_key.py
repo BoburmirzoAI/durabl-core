@@ -72,6 +72,34 @@ class ApiKey(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     revoked_at: Mapped[datetime | None] = mapped_column(DateTimeTZ, nullable=True)
 
     # ------------------------------------------------------------------
+    # Rotatsiya (`POST /api-keys/{id}/rotate`)
+    # ------------------------------------------------------------------
+
+    #: ESKI kalitning hashi — rotatsiyadan keyin qisqa muddat ishlaydi.
+    #:
+    #: ## Nega eski kalit darhol o'lmaydi
+    #:
+    #: Mijozning CI'si, serveri va lokal muhiti bir xil kalitni
+    #: ishlatayotgan bo'lishi mumkin. Darhol bekor qilish ularning
+    #: hammasini BIR VAQTDA uzadi — ya'ni rotatsiya "xavfsizlik amali"
+    #: emas, "avariya" bo'lib qolardi. Shuning uchun eski kalitga
+    #: `API_KEY_ROTATION_GRACE_HOURS` beriladi: mijoz yangi kalitni
+    #: tarqatib, keyin eskisi o'zi o'ladi.
+    #:
+    #: ## Nega yangi YOZUV emas, joyida almashtirish
+    #:
+    #: Yangi qator yaratilsa `id` o'zgarardi va mijozning
+    #: dashboard'dagi havolasi, nomi, statistikasi uzilib qolardi.
+    #: Joyida almashtirishda `id` saqlanadi — shartnoma
+    #: (`ApiKeyRotation.key_id`) ham shuni kutadi.
+    previous_key_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    #: Eski kalit qachongacha ishlaydi. `None` — eski kalit yo'q yoki
+    #: muddati tugab, hash tozalangan.
+    previous_key_expires_at: Mapped[datetime | None] = mapped_column(DateTimeTZ, nullable=True)
+    #: Oxirgi rotatsiya vaqti (audit va UI uchun).
+    rotated_at: Mapped[datetime | None] = mapped_column(DateTimeTZ, nullable=True)
+
+    # ------------------------------------------------------------------
     # Bog'lanishlar
     # ------------------------------------------------------------------
 
@@ -95,6 +123,17 @@ class ApiKey(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     def masked(self) -> str:
         """UI'da ko'rsatiladigan niqoblangan ko'rinish: `durabl_...a1b2`."""
         return f"{self.key_prefix}...{self.last_four}"
+
+    @property
+    def has_valid_previous_key(self) -> bool:
+        """Eski kalit hamon ishlaydimi (rotatsiya muddati tugamaganmi).
+
+        Ikki shart birga: hash saqlangan VA muddati o'tmagan. Muddat
+        o'tgandan keyin hash DB'da qolishi mumkin (tozalash kechikadi),
+        shuning uchun vaqt tekshiruvi SHART — aks holda eski kalit
+        abadiy ishlab qolardi.
+        """
+        return self.previous_key_hash is not None and not is_expired(self.previous_key_expires_at)
 
 
 __all__ = ["ApiKey"]

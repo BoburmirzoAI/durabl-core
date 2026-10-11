@@ -258,6 +258,11 @@ class JobNotCancellableError(ConflictError):
         )
 
 
+class ApiKeyRevokedError(ConflictError):
+    code = "API_KEY_REVOKED"
+    message = "Kalit bekor qilingan — huquq, muddat va rotatsiya amallari qo'llanmaydi"
+
+
 class JobNotRetryableError(ConflictError):
     code = "JOB_NOT_RETRYABLE"
     message = "Bu job'ni qayta urinib ko'rish mumkin emas"
@@ -587,6 +592,7 @@ class NotImplementedFeatureError(DurablError):
 __all__ = [
     "AdminRequiredError",
     "ApiKeyNotFoundError",
+    "ApiKeyRevokedError",
     "AuthenticationError",
     "BadRequestError",
     "CacheError",
