@@ -36,7 +36,7 @@ from typing import Annotated, Any, Final, Literal
 from fastapi import APIRouter, Depends, Path, Query, Request, status
 
 from app.constants import AuditAction, PlanType
-from app.dependencies import AdminUser, AnalyticsSvc, DbSession, Pagination, RedisDep
+from app.dependencies import AdminUser, AnalyticsSvc, DbSession, Pagination, RedisDep, ScopeAdmin
 from app.schemas.admin import (
     AdminStats,
     AdminUserRead,
@@ -48,7 +48,21 @@ from app.schemas.base import ErrorResponse, PaginatedResponse, TimeRangeParams
 from app.schemas.job import JobFilter, JobSummary
 from app.services.admin_service import AdminService
 
-router = APIRouter(prefix="/admin", tags=["admin"])
+#: Admin endpointlari API kalit uchun `admin` doirasini TALAB QILADI.
+#:
+#: `AdminUser` faqat foydalanuvchining ROLINI tekshiradi
+#: (`user.is_admin`), lekin u `get_current_active_user` ustida qurilgan
+#: — ya'ni API kalitni ham qabul qiladi. Busiz admin foydalanuvchining
+#: TOR doiradagi kaliti (masalan `jobs:read`) butun admin paneliga
+#: yetib borardi: boshqa foydalanuvchilarni o'zgartirish, DLQ tozalash,
+#: audit jurnalini o'qish.
+#:
+#: Ikki tekshiruv BIRGA ishlaydi: rol (kim) va doira (qanday kalit bilan).
+router = APIRouter(
+    prefix="/admin",
+    tags=["admin"],
+    dependencies=[ScopeAdmin],
+)
 
 #: `User-Agent` header nomi (audit yozuvi uchun).
 HEADER_USER_AGENT: Final = "user-agent"

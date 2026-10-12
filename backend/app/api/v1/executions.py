@@ -25,7 +25,7 @@ from typing import Annotated, Any, Final
 from fastapi import APIRouter, Depends, Path, Query, status
 
 from app.constants import LogStream
-from app.dependencies import CurrentUser, ExecutionSvc, Pagination
+from app.dependencies import CurrentUser, ExecutionSvc, Pagination, ScopeJobsRead
 from app.schemas.base import ErrorResponse, PaginatedResponse
 from app.schemas.execution import (
     MAX_LOG_LIMIT,
@@ -40,7 +40,18 @@ from app.schemas.job import JobLogsResponse
 # ikki log endpoint'i bitta standartni ishlatadi.
 from app.services.job_service import DEFAULT_LOG_LIMIT
 
-router = APIRouter(prefix="/executions", tags=["executions"])
+#: Butun router API kalit uchun `jobs:read` doirasini talab qiladi.
+#:
+#: Urinishlar — job tafsilotining qismi (`jobs:read` tavsifi: "read status, logs, results and attempts").
+#:
+#: Darvoza ROUTER darajasida: yangi endpoint qo'shilganda u
+#: avtomatik himoyalanadi va belgilashni unutib bo'lmaydi.
+#: JWT bilan kirilganda scope tekshirilmaydi (`require_scope`).
+router = APIRouter(
+    prefix="/executions",
+    tags=["executions"],
+    dependencies=[ScopeJobsRead],
+)
 
 #: Barcha endpointlar uchun mumkin bo'lgan xato javoblari (OpenAPI uchun).
 _ERRORS: Final[dict[int, dict[str, Any]]] = {

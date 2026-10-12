@@ -29,7 +29,7 @@ from typing import Annotated, Any, Final
 from fastapi import APIRouter, Depends, Query, Request, status
 
 from app.constants import PlanType
-from app.dependencies import AuthSvc, BillingSvc, CurrentUser
+from app.dependencies import AuthSvc, BillingSvc, CurrentUser, ScopeAdmin
 from app.exceptions import DurablError
 from app.logging_config import get_logger
 from app.middleware.auth_middleware import extract_credentials
@@ -46,6 +46,24 @@ from app.utils.security import is_api_key_format
 
 logger = get_logger(__name__)
 
+#: Scope darvozasi ROUTER darajasida EMAS, har endpointda alohida.
+#:
+#: Sababi: `GET /billing/plans` ATAYLAB ommaviy (narx ro'yxati,
+#: autentifikatsiya talab qilmaydi). Router darajasidagi darvoza unga
+#: ham auth majburlab qo'yardi — bu aynan sinab ko'rilgan va uch test
+#: shu sababdan yiqilgan edi:
+#:
+#:     test_plans_without_authentication
+#:     test_plans_tolerates_broken_token
+#:     test_request_id_generated   (ommaviy yo'lni ishlatadi)
+#:
+#: Ya'ni router darvozasi qulay, lekin ISTISNONI ko'rmaydi. Shuning
+#: uchun billing'da `ScopeAdmin` qo'lda, `/plans` dan tashqari barcha
+#: endpointga qo'yiladi.
+#:
+#: Doira `admin`: frontend `API_KEY_SCOPE_INFO.admin` tavsifi
+#: ("everything above, plus billing, webhooks, team and API key
+#: management") shuni belgilaydi.
 router = APIRouter(prefix="/billing", tags=["billing"])
 
 #: Autentifikatsiya talab qiladigan endpointlarning umumiy xato javoblari.
@@ -108,6 +126,7 @@ OptionalPlan = Annotated[PlanType | None, Depends(resolve_optional_plan)]
 
 @router.get(
     "/usage",
+    dependencies=[ScopeAdmin],
     response_model=UsageSummary,
     status_code=status.HTTP_200_OK,
     summary="Joriy davr iste'moli",
@@ -141,6 +160,7 @@ async def get_plans(svc: BillingSvc, current_plan: OptionalPlan) -> PlansRespons
 
 @router.get(
     "/subscription",
+    dependencies=[ScopeAdmin],
     response_model=SubscriptionRead,
     status_code=status.HTTP_200_OK,
     summary="Joriy obuna",
@@ -158,6 +178,7 @@ async def get_subscription(user: CurrentUser, svc: BillingSvc) -> SubscriptionRe
 
 @router.post(
     "/subscription",
+    dependencies=[ScopeAdmin],
     response_model=SubscriptionRead,
     status_code=status.HTTP_200_OK,
     summary="Rejani almashtirish (to'lov tizimi ulanmagan)",
@@ -181,6 +202,7 @@ async def change_subscription(
 
 @router.get(
     "/history",
+    dependencies=[ScopeAdmin],
     response_model=list[UsageHistoryItem],
     status_code=status.HTTP_200_OK,
     summary="Oylik foydalanish tarixi",

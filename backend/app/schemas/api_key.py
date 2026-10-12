@@ -14,6 +14,7 @@ from typing import Annotated
 
 from pydantic import Field, computed_field, field_validator
 
+from app.constants import ApiKeyScope
 from app.schemas.base import DurablSchema, ORMSchema
 from app.utils.time_utils import ensure_utc, is_expired, utcnow
 
@@ -22,6 +23,36 @@ MAX_API_KEY_NAME_LENGTH = 100
 
 #: Bitta kalitga berilishi mumkin bo'lgan ruxsatlar (scope) soni.
 MAX_API_KEY_SCOPES = 32
+
+
+def _validate_scopes(value: list[str]) -> list[str]:
+    """Doiralar ro'yxatini tekshiradi: noma'lum qiymat RAD ETILADI.
+
+    ## Nega noma'lum qiymat xavfli
+
+    Scope'lar MAJBURLANADI (`app/dependencies.py`, `require_scope`).
+    Qoida: ro'yxat bo'sh bo'lsa — to'liq huquq, to'ldirilgan bo'lsa —
+    faqat sanalgan doiralar.
+
+    Demak mijoz `job:read` deb xato yozsa (`jobs:read` o'rniga),
+    ro'yxat BO'SH EMAS, lekin hech bir haqiqiy doiraga mos kelmaydi —
+    kalit hamma joyda 403 oladi va sababi ko'rinmaydi. Mijoz kalitni
+    qayta-qayta yaratib ko'rishga majbur bo'lardi.
+
+    Shuning uchun xato YUBORISH paytida ushlanadi va javobda ruxsat
+    etilgan qiymatlar ro'yxati ko'rsatiladi.
+    """
+    unique: list[str] = []
+    for scope in value:
+        if scope not in unique:
+            unique.append(scope)
+    if len(unique) > MAX_API_KEY_SCOPES:
+        raise ValueError(f"Ruxsatlar soni {MAX_API_KEY_SCOPES} dan oshmasligi kerak")
+    allowed = set(ApiKeyScope.all())
+    unknown = [scope for scope in unique if scope not in allowed]
+    if unknown:
+        raise ValueError(f"Noma'lum ruxsat: {unknown}. Ruxsat etilganlar: {ApiKeyScope.all()}")
+    return unique
 
 
 class ApiKeyCreate(DurablSchema):
@@ -44,16 +75,15 @@ class ApiKeyCreate(DurablSchema):
     @field_validator("scopes")
     @classmethod
     def _check_scopes(cls, value: list[str] | None) -> list[str] | None:
-        """Ruxsatlar sonini tekshiradi va takrorlanishni olib tashlaydi."""
+        """Doiralarni tekshiradi (`_validate_scopes` ga qarang).
+
+        `None` — doira berilmagan, ya'ni to'liq huquq. Bu `[]` bilan
+        AYNI ma'noda va ataylab ruxsat etilgan: mijoz cheklovsiz kalit
+        so'rashi normal holat.
+        """
         if value is None:
             return None
-        unique: list[str] = []
-        for scope in value:
-            if scope not in unique:
-                unique.append(scope)
-        if len(unique) > MAX_API_KEY_SCOPES:
-            raise ValueError(f"Ruxsatlar soni {MAX_API_KEY_SCOPES} dan oshmasligi kerak")
-        return unique
+        return _validate_scopes(value)
 
     @field_validator("expires_at")
     @classmethod
@@ -138,29 +168,13 @@ class ApiKeyScopesUpdate(DurablSchema):
     @field_validator("scopes")
     @classmethod
     def _check_scopes(cls, value: list[str]) -> list[str]:
-        """Takrorlanishni olib tashlaydi va sonini tekshiradi.
+        """Doiralarni tekshiradi (`_validate_scopes` ga qarang).
 
-        ## DIQQAT — scope'lar hozircha MAJBURLANMAYDI
-
-        Qiymat DB'ga yoziladi va API'da qaytariladi, lekin hech bir
-        endpoint uni TEKSHIRMAYDI: `jobs:read` bergan kalit ham to'liq
-        huquqqa ega bo'lib qoladi.
-
-        Shu sababli bu validator noma'lum qiymatni ham qabul qiladi —
-        `ApiKeyCreate` bilan AYNI xulq. Ikki joyda farqli qoida bo'lsa,
+        `ApiKeyCreate` bilan AYNI qoida: ikki joyda farqli bo'lsa,
         mijoz `POST` da o'tgan qiymatni `PUT` da rad etilganini ko'rib
         chalkashardi.
-
-        Majburlash qo'shilganda (`require_scope` dependency) bu yerda
-        ham qat'iy ro'yxat tekshiruvi paydo bo'lishi kerak.
         """
-        unique: list[str] = []
-        for scope in value:
-            if scope not in unique:
-                unique.append(scope)
-        if len(unique) > MAX_API_KEY_SCOPES:
-            raise ValueError(f"Ruxsatlar soni {MAX_API_KEY_SCOPES} dan oshmasligi kerak")
-        return unique
+        return _validate_scopes(value)
 
 
 class ApiKeyExpiryUpdate(DurablSchema):

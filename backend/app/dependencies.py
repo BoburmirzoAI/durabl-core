@@ -17,6 +17,7 @@ Qatlam qoidasi: bu modul `services/` ni chaqiradi, `repositories/` yoki
 from __future__ import annotations
 
 import uuid
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Annotated, Literal
 
@@ -33,10 +34,16 @@ from app.constants import (
     HEADER_CORRELATION_ID,
     HEADER_IDEMPOTENCY_KEY,
     HEADER_REQUEST_ID,
+    ApiKeyScope,
     RedisKeys,
 )
 from app.database import get_db
-from app.exceptions import AdminRequiredError, AuthenticationError, InactiveUserError
+from app.exceptions import (
+    AdminRequiredError,
+    ApiKeyScopeError,
+    AuthenticationError,
+    InactiveUserError,
+)
 from app.logging_config import bind_request_context, get_logger
 from app.middleware.auth_middleware import extract_credentials, extract_ws_token
 from app.models.api_key import ApiKey
@@ -282,6 +289,62 @@ async def require_admin(
     return user
 
 
+def require_scope(scope: ApiKeyScope) -> Callable[..., Awaitable[Principal]]:
+    """Endpoint uchun API kalit ruxsat doirasini talab qiladigan dependency.
+
+    ## Semantika — uch qoida
+
+    1. **JWT bilan kirilgan bo'lsa scope TEKSHIRILMAYDI.** Scope —
+       mashina hisob ma'lumotining xususiyati. Foydalanuvchi o'z nomidan
+       kirganda u allaqachon to'liq huquqqa ega (dashboard ham shu
+       yo'ldan ishlaydi).
+    2. **`scopes` bo'sh ro'yxat bo'lsa — to'liq huquq.** Bu ORQAGA
+       MOSLIK uchun: majburlash qo'shilishidan oldin yaratilgan kalitlar
+       bo'sh ro'yxat bilan yozilgan va ular ishlashdan to'xtamasligi
+       kerak. `ApiKeyCreate` tavsifi ham "bo'sh ro'yxat — barcha
+       standart huquqlar" deb yozilgan.
+    3. **`ADMIN` scope hammasini qamraydi.** Frontend tavsifi ham
+       shunday: "everything above, plus billing, webhooks, team and
+       API key management".
+
+    ## Nega `Principal` qaytaradi, `User` emas
+
+    Endpoint odatda `CurrentUser` ni alohida oladi. Bu dependency esa
+    `dependencies=[...]` ro'yxatida ishlatiladi, ya'ni qaytargan qiymati
+    ishlatilmaydi — lekin `Principal` qaytarish testlarda to'g'ridan-
+    to'g'ri chaqirib tekshirishni osonlashtiradi.
+
+    Args:
+        scope: Talab qilinadigan doira.
+
+    Returns:
+        FastAPI dependency funksiyasi.
+    """
+
+    async def dependency(principal: CurrentPrincipal) -> Principal:
+        """Kalitning doirasi yetarli ekanini tekshiradi."""
+        if principal.auth_method != "api_key" or principal.api_key is None:
+            return principal
+
+        granted = [str(item) for item in (principal.api_key.scopes or [])]
+        # Bo'sh ro'yxat — to'liq huquq (orqaga moslik, yuqoridagi 2-qoida).
+        if not granted:
+            return principal
+        if ApiKeyScope.ADMIN.value in granted or scope.value in granted:
+            return principal
+
+        logger.warning(
+            "API kalit doirasi yetarli emas",
+            user_id=str(principal.user.id),
+            api_key_id=str(principal.api_key.id),
+            required_scope=scope.value,
+            granted_scopes=granted,
+        )
+        raise ApiKeyScopeError(required=scope.value, granted=granted)
+
+    return dependency
+
+
 async def get_ws_user(
     websocket: WebSocket,
     session: DbSession,
@@ -459,6 +522,20 @@ CurrentPrincipal = Annotated[Principal, Depends(get_current_principal)]
 CurrentUser = Annotated[User, Depends(get_current_active_user)]
 AdminUser = Annotated[User, Depends(require_admin)]
 WsUser = Annotated[User, Depends(get_ws_user)]
+
+#: Router darajasida ishlatiladigan scope darvozalari.
+#:
+#: `APIRouter(dependencies=[...])` butun routerga qo'llanadi — bu 45
+#: endpointni bitta-bitta belgilashdan ancha xatosizroq: yangi endpoint
+#: qo'shilganda u AVTOMATIK himoyalanadi, belgilashni unutib bo'lmaydi.
+#:
+#: Aralash (o'qish + yozish) routerlar uchun esa endpoint darajasida
+#: beriladi — `jobs` va `dlq` shunday.
+ScopeJobsRead = Depends(require_scope(ApiKeyScope.JOBS_READ))
+ScopeJobsWrite = Depends(require_scope(ApiKeyScope.JOBS_WRITE))
+ScopeDlqRead = Depends(require_scope(ApiKeyScope.DLQ_READ))
+ScopeDlqWrite = Depends(require_scope(ApiKeyScope.DLQ_WRITE))
+ScopeAdmin = Depends(require_scope(ApiKeyScope.ADMIN))
 
 Pagination = Annotated[PaginationParams, Depends(pagination_params)]
 IdempotencyKey = Annotated[str | None, Depends(get_idempotency_key)]

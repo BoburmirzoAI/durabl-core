@@ -32,7 +32,14 @@ from typing import Annotated, Any, Final
 from fastapi import APIRouter, Body, Depends, Path, status
 
 from app.constants import JobStatus
-from app.dependencies import AnalyticsSvc, CurrentUser, DlqSvc, Pagination
+from app.dependencies import (
+    AnalyticsSvc,
+    CurrentUser,
+    DlqSvc,
+    Pagination,
+    ScopeDlqRead,
+    ScopeDlqWrite,
+)
 from app.schemas.base import ErrorResponse, PaginatedResponse, SuccessResponse
 from app.schemas.dlq import (
     DlqEntryRead,
@@ -81,6 +88,7 @@ EntryId = Annotated[uuid.UUID, Path(description="DLQ yozuvi identifikatori")]
 
 @router.get(
     "",
+    dependencies=[ScopeDlqRead],
     response_model=PaginatedResponse[DlqEntryRead],
     status_code=status.HTTP_200_OK,
     summary="DLQ yozuvlari ro'yxati",
@@ -113,6 +121,7 @@ async def list_dlq_entries(
 # DIQQAT: `/stats` `/{entry_id}` dan OLDIN turishi SHART (modul docstring'i).
 @router.get(
     "/stats",
+    dependencies=[ScopeDlqRead],
     response_model=DlqStats,
     status_code=status.HTTP_200_OK,
     summary="DLQ chuqurligi va sabablar taqsimoti",
@@ -137,6 +146,7 @@ async def get_dlq_stats(
 
 @router.get(
     "/{entry_id}",
+    dependencies=[ScopeDlqRead],
     response_model=DlqEntryRead,
     status_code=status.HTTP_200_OK,
     summary="Bitta DLQ yozuvi tafsiloti",
@@ -163,6 +173,7 @@ async def get_dlq_entry(
 
 @router.post(
     "/{entry_id}/retry",
+    dependencies=[ScopeDlqWrite],
     response_model=DlqRetryResponse,
     status_code=status.HTTP_200_OK,
     summary="Job'ni DLQ'dan qayta navbatga qo'yish",
@@ -213,6 +224,7 @@ async def retry_dlq_entry(
 
 @router.delete(
     "/{entry_id}",
+    dependencies=[ScopeDlqWrite],
     response_model=SuccessResponse,
     status_code=status.HTTP_200_OK,
     summary="DLQ yozuvini hal qilingan deb belgilash",

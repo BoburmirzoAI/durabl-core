@@ -32,7 +32,7 @@ from typing import Annotated, Any, Final
 
 from fastapi import APIRouter, Body, Path, status
 
-from app.dependencies import CurrentUser, Pagination, WebhookSvc
+from app.dependencies import CurrentUser, Pagination, ScopeAdmin, WebhookSvc
 from app.schemas.base import ErrorResponse, PaginatedResponse, SuccessResponse
 from app.schemas.webhook import (
     WebhookCreate,
@@ -44,7 +44,18 @@ from app.schemas.webhook import (
     WebhookUpdate,
 )
 
-router = APIRouter(prefix="/webhooks", tags=["webhooks"])
+#: Butun router API kalit uchun `admin` doirasini talab qiladi.
+#:
+#: Webhook sozlamalari — frontend `admin` tavsifi bo'yicha.
+#:
+#: Darvoza ROUTER darajasida: yangi endpoint qo'shilganda u
+#: avtomatik himoyalanadi va belgilashni unutib bo'lmaydi.
+#: JWT bilan kirilganda scope tekshirilmaydi (`require_scope`).
+router = APIRouter(
+    prefix="/webhooks",
+    tags=["webhooks"],
+    dependencies=[ScopeAdmin],
+)
 
 #: Mumkin bo'lgan xato javoblari (OpenAPI uchun).
 _ERRORS: Final[dict[int, dict[str, Any]]] = {

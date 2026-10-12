@@ -258,6 +258,28 @@ class JobNotCancellableError(ConflictError):
         )
 
 
+class ApiKeyScopeError(PermissionDeniedError):
+    """API kalitning ruxsat doirasi yetarli emas (403).
+
+    `AdminRequiredError` dan farqi: u FOYDALANUVCHINING roli haqida,
+    bu esa KALITNING huquqlari haqida. Mijoz admin bo'lishi mumkin,
+    lekin kaliti tor doira bilan yaratilgan bo'lsa ham rad etiladi —
+    aynan shu scope'ning maqsadi.
+    """
+
+    code = "API_KEY_SCOPE_REQUIRED"
+
+    def __init__(self, *, required: str, granted: list[str], **kwargs: Any) -> None:
+        details = kwargs.pop("details", {}) or {}
+        details.setdefault("required_scope", required)
+        details.setdefault("granted_scopes", granted)
+        super().__init__(
+            f"Bu amal uchun kalitga '{required}' ruxsati kerak",
+            details=details,
+            **kwargs,
+        )
+
+
 class ApiKeyRevokedError(ConflictError):
     code = "API_KEY_REVOKED"
     message = "Kalit bekor qilingan — huquq, muddat va rotatsiya amallari qo'llanmaydi"
@@ -593,6 +615,7 @@ __all__ = [
     "AdminRequiredError",
     "ApiKeyNotFoundError",
     "ApiKeyRevokedError",
+    "ApiKeyScopeError",
     "AuthenticationError",
     "BadRequestError",
     "CacheError",

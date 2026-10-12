@@ -67,6 +67,8 @@ from app.dependencies import (
     IdempotencyKey,
     JobSvc,
     Pagination,
+    ScopeJobsRead,
+    ScopeJobsWrite,
 )
 from app.exceptions import ValidationError
 from app.logging_config import get_logger
@@ -234,6 +236,7 @@ JobFilterDep = Annotated[JobFilter, Depends(get_job_filter)]
 
 @router.get(
     "",
+    dependencies=[ScopeJobsRead],
     response_model=PaginatedResponse[JobSummary],
     status_code=status.HTTP_200_OK,
     summary="Job'lar ro'yxati",
@@ -264,6 +267,7 @@ async def list_jobs(
 
 @router.post(
     "",
+    dependencies=[ScopeJobsWrite],
     response_model=JobRead,
     status_code=status.HTTP_201_CREATED,
     summary="Yangi job yuborish",
@@ -325,6 +329,7 @@ async def submit_job(
 
 @router.get(
     "/{job_id}",
+    dependencies=[ScopeJobsRead],
     response_model=JobRead,
     status_code=status.HTTP_200_OK,
     summary="Job tafsiloti",
@@ -339,6 +344,7 @@ async def get_job(user: CurrentUser, svc: JobSvc, job_id: JobId) -> JobRead:
 
 @router.get(
     "/{job_id}/status",
+    dependencies=[ScopeJobsRead],
     response_model=JobStatusResponse,
     status_code=status.HTTP_200_OK,
     summary="Job holati (yengil)",
@@ -362,6 +368,7 @@ async def get_job_status(
 
 @router.get(
     "/{job_id}/logs",
+    dependencies=[ScopeJobsRead],
     response_model=JobLogsResponse,
     status_code=status.HTTP_200_OK,
     summary="Job loglari",
@@ -421,6 +428,7 @@ async def get_job_logs(
 
 @router.get(
     "/{job_id}/result",
+    dependencies=[ScopeJobsRead],
     response_model=JobResultResponse,
     status_code=status.HTTP_200_OK,
     summary="Job natijasi",
@@ -442,6 +450,7 @@ async def get_job_result(user: CurrentUser, svc: JobSvc, job_id: JobId) -> JobRe
 
 @router.get(
     "/{job_id}/timeline",
+    dependencies=[ScopeJobsRead],
     response_model=JobTimeline,
     status_code=status.HTTP_200_OK,
     summary="Job vaqt o'qi",
@@ -483,6 +492,7 @@ async def get_job_timeline(
 
 @router.post(
     "/{job_id}/cancel",
+    dependencies=[ScopeJobsWrite],
     response_model=JobCancelResponse,
     status_code=status.HTTP_200_OK,
     summary="Job'ni bekor qilish",
@@ -504,6 +514,7 @@ async def cancel_job(user: CurrentUser, svc: JobSvc, job_id: JobId) -> JobCancel
 
 @router.post(
     "/{job_id}/retry",
+    dependencies=[ScopeJobsWrite],
     response_model=JobRead,
     status_code=status.HTTP_200_OK,
     summary="Job'ni qayta urinishga qo'yish",
@@ -526,6 +537,7 @@ async def retry_job(user: CurrentUser, svc: JobSvc, job_id: JobId) -> JobRead:
 
 @router.delete(
     "/{job_id}",
+    dependencies=[ScopeJobsWrite],
     response_model=JobDeleteResponse,
     status_code=status.HTTP_200_OK,
     summary="Job'ni o'chirish",
@@ -547,6 +559,7 @@ async def delete_job(user: CurrentUser, svc: JobSvc, job_id: JobId) -> JobDelete
 
 @router.get(
     "/{job_id}/lease-history",
+    dependencies=[ScopeJobsRead],
     response_model=JobLeaseHistory,
     status_code=status.HTTP_200_OK,
     summary="Lease tarixi",
@@ -567,6 +580,7 @@ async def get_job_lease_history(user: CurrentUser, svc: JobSvc, job_id: JobId) -
 
 @router.get(
     "/{job_id}/idempotency",
+    dependencies=[ScopeJobsRead],
     response_model=JobIdempotency,
     status_code=status.HTTP_200_OK,
     summary="Takrorlanmaslik ma'lumoti",
@@ -586,6 +600,7 @@ async def get_job_idempotency(user: CurrentUser, svc: JobSvc, job_id: JobId) -> 
 
 @router.post(
     "/{job_id}/resubmit",
+    dependencies=[ScopeJobsWrite],
     response_model=JobRead,
     status_code=status.HTTP_201_CREATED,
     summary="Job'ni qayta yuborish",

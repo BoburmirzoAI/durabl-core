@@ -30,7 +30,7 @@ from typing import Annotated, Any, Final
 from fastapi import APIRouter, Depends, Query, Response, status
 
 from app.config import settings
-from app.dependencies import AnalyticsSvc, CurrentUser
+from app.dependencies import AnalyticsSvc, CurrentUser, ScopeJobsRead
 from app.schemas.analytics import (
     Interval,
     LatencyStats,
@@ -40,7 +40,18 @@ from app.schemas.analytics import (
 )
 from app.schemas.base import ErrorResponse, TimeRangeParams
 
-router = APIRouter(prefix="/analytics", tags=["analytics"])
+#: Butun router API kalit uchun `jobs:read` doirasini talab qiladi.
+#:
+#: Analitika — job ma'lumotining agregatsiyasi, ya'ni o'qish huquqi.
+#:
+#: Darvoza ROUTER darajasida: yangi endpoint qo'shilganda u
+#: avtomatik himoyalanadi va belgilashni unutib bo'lmaydi.
+#: JWT bilan kirilganda scope tekshirilmaydi (`require_scope`).
+router = APIRouter(
+    prefix="/analytics",
+    tags=["analytics"],
+    dependencies=[ScopeJobsRead],
+)
 
 #: `Cache-Control` header nomi.
 HEADER_CACHE_CONTROL: Final = "Cache-Control"

@@ -265,6 +265,42 @@ class AuditAction(StrEnum):
     PLAN_CHANGED = "plan.changed"
 
 
+class ApiKeyScope(StrEnum):
+    """API kalitga beriladigan ruxsat doirasi.
+
+    ## Nega kerak
+
+    Kalit ODAMGA emas, MASHINAGA beriladi: CI, server, monitoring.
+    Mashina kalitni `.env` faylida, log'da va Docker image ichida
+    ko'tarib yuradi — ya'ni sizib ketish ehtimoli paroldan yuqori.
+
+    Scope zarar doirasini cheklaydi: `jobs:write` bo'lgan kalit sizib
+    ketsa, topgan odam job yuborishi mumkin, lekin billing'ni ko'ra
+    olmaydi, kalitlarni o'chira olmaydi va jamoani o'zgartira olmaydi.
+
+    ## Qiymatlar frontend shartnomasidan olingan
+
+    `frontend/src/types/api-key.ts` dagi `API_KEY_SCOPE_INFO` bilan
+    AYNAN bir xil — ikki joyda ikki xil ro'yxat bo'lsa, UI'da ko'rsatilgan
+    huquq backend tekshiruvi bilan mos kelmasdi.
+
+    `ADMIN` tavsifi ("everything above, plus billing, webhooks, team and
+    API key management") xaritalashni belgilaydi: billing va webhook
+    endpointlari `ADMIN` talab qiladi.
+    """
+
+    JOBS_READ = "jobs:read"
+    JOBS_WRITE = "jobs:write"
+    DLQ_READ = "dlq:read"
+    DLQ_WRITE = "dlq:write"
+    ADMIN = "admin"
+
+    @classmethod
+    def all(cls) -> list[str]:
+        """Barcha qiymatlar (validatsiya xabarlarida ko'rsatish uchun)."""
+        return [scope.value for scope in cls]
+
+
 class LeaseEventKind(StrEnum):
     """Lease hayot siklidagi hodisa turi (`GET /jobs/{id}/lease-history`).
 
@@ -634,6 +670,7 @@ __all__ = [
     "SANDBOX_PAYLOAD_FILENAME",
     "SANDBOX_RESULT_FILENAME",
     "SANDBOX_WORKDIR",
+    "ApiKeyScope",
     "AuditAction",
     "DeliveryStatus",
     "DeviceType",
