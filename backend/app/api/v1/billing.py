@@ -26,7 +26,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any, Final
 
-from fastapi import APIRouter, Depends, Query, Request, status
+from fastapi import APIRouter, Depends, Path, Query, Request, status
 
 from app.constants import PlanType
 from app.dependencies import AuthSvc, BillingSvc, CurrentUser, ScopeAdmin
@@ -35,8 +35,15 @@ from app.logging_config import get_logger
 from app.middleware.auth_middleware import extract_credentials
 from app.schemas.base import ErrorResponse
 from app.schemas.billing import (
+    CostEstimate,
+    CostEstimateRequest,
+    CostProjection,
+    PlanChangePreview,
     PlanChangeRequest,
     PlansResponse,
+    QuotaBreakdown,
+    RuntimeCost,
+    StatementRead,
     SubscriptionRead,
     UsageHistoryItem,
     UsageSummary,
@@ -74,9 +81,22 @@ AUTH_RESPONSES: Final[dict[int | str, dict[str, Any]]] = {
     },
     status.HTTP_403_FORBIDDEN: {
         "model": ErrorResponse,
-        "description": "Hisob faolsizlantirilgan",
+        "description": "Hisob faolsizlantirilgan yoki kalit doirasi yetarli emas",
     },
 }
+
+
+def _with_errors(*items: tuple[int, str]) -> dict[int | str, dict[str, Any]]:
+    """`AUTH_RESPONSES` ustiga qo'shimcha xatolarni qo'shadi.
+
+    Autentifikatsiya xatolari har endpointda bir xil, shuning uchun
+    ularni qayta yozish o'rniga umumiy lug'at kengaytiriladi — hujjat
+    bir joyda qoladi.
+    """
+    extra: dict[int | str, dict[str, Any]] = {
+        code: {"model": ErrorResponse, "description": text} for code, text in items
+    }
+    return {**AUTH_RESPONSES, **extra}
 
 
 async def resolve_optional_plan(
@@ -226,6 +246,160 @@ async def get_history(
 ) -> list[UsageHistoryItem]:
     """Oylik foydalanish tarixi."""
     return await svc.history(user, limit=limit)
+
+
+@router.get(
+    "/invoices",
+    dependencies=[ScopeAdmin],
+    response_model=list[StatementRead],
+    status_code=status.HTTP_200_OK,
+    summary="Oylik hisob-kitoblar",
+    description=(
+        "Davr bo'yicha foydalanish va hisoblangan summa.\n\n"
+        "DIQQAT: loyihada to'lov tizimi ulanmagan — `status` va `pdf_url` "
+        "`null` qaytadi, `payments_enabled` buni ko'rsatadi. Foydalanish "
+        "ma'lumoti (`job_count`, `execution_seconds`) va summa esa haqiqiy.\n\n"
+        "Narx JORIY reja bo'yicha hisoblanadi: o'tgan davrlarda qaysi reja "
+        "amal qilgani saqlanmaydi (`plan_history_tracked`)."
+    ),
+    responses=AUTH_RESPONSES,
+)
+async def get_invoices(
+    user: CurrentUser,
+    svc: BillingSvc,
+    limit: Annotated[
+        int,
+        Query(ge=1, le=MAX_HISTORY_MONTHS, description="Nechta davr qaytarilsin"),
+    ] = DEFAULT_HISTORY_MONTHS,
+) -> list[StatementRead]:
+    """Oylik hisob-kitoblar ro'yxati."""
+    rows = await svc.statements(user, limit=limit)
+    return [StatementRead.model_validate(row) for row in rows]
+
+
+@router.get(
+    "/projection",
+    dependencies=[ScopeAdmin],
+    response_model=CostProjection,
+    status_code=status.HTTP_200_OK,
+    summary="Oy oxirigacha prognoz",
+    description=(
+        "Joriy tezlik (`kunlik o'rtacha`) oy oxirigacha davom etadi deb "
+        "hisoblanadi.\n\n"
+        "`will_exceed` \"qo'shimcha pul to'laysiz\" EMAS — Durabl kvotada "
+        "job'ni rad etadi, shuning uchun u \"limitga yetib job'lar rad "
+        'etila boshlaydi" degani.\n\n'
+        "Oyning birinchi kunida prognoz berilmaydi: bir kunlik ma'lumotni "
+        "30 ga ko'paytirish xatoni 30 barobar kattalashtirardi."
+    ),
+    responses=AUTH_RESPONSES,
+)
+async def get_projection(user: CurrentUser, svc: BillingSvc) -> CostProjection:
+    """Oy oxirigacha xarajat va kvota prognozi."""
+    return CostProjection.model_validate(await svc.projection(user))
+
+
+@router.get(
+    "/runtime-costs",
+    dependencies=[ScopeAdmin],
+    response_model=list[RuntimeCost],
+    status_code=status.HTTP_200_OK,
+    summary="Runtime bo'yicha xarajat",
+    description=(
+        "Joriy davrda xarajatning runtime bo'yicha taqsimi.\n\n"
+        "Reja narxi oylik va yagona — runtime bo'yicha alohida tarif yo'q, "
+        "shuning uchun xarajat BAJARISH SONIYALARI nisbatida taqsimlanadi. "
+        "Hech qanday soniya bajarilmagan bo'lsa taqsim ham nol bo'ladi."
+    ),
+    responses=AUTH_RESPONSES,
+)
+async def get_runtime_costs(user: CurrentUser, svc: BillingSvc) -> list[RuntimeCost]:
+    """Runtime bo'yicha xarajat taqsimoti."""
+    rows = await svc.runtime_costs(user)
+    return [RuntimeCost.model_validate(row) for row in rows]
+
+
+@router.get(
+    "/usage/{key}",
+    dependencies=[ScopeAdmin],
+    response_model=QuotaBreakdown,
+    status_code=status.HTTP_200_OK,
+    summary="Kvota o'lchagichi tafsiloti",
+    description=(
+        "O'lchagich faqat \"82%\" deydi; bu yo'l NIMA hisoblanishini, KIM "
+        "sarflayotganini va limitga yetganda NIMA bo'lishini aytadi.\n\n"
+        "Qo'llanadigan kalitlar: `monthly_jobs`, `compute_seconds`. "
+        "`max_concurrent_jobs` va `requests_per_minute` ATAYLAB yo'q — "
+        "ular Redis'da lahzalik qiymat sifatida yashaydi va tarixi "
+        "saqlanmaydi, ya'ni tahlil yasash uchun ma'lumot yo'q.\n\n"
+        "`daily` va `by_api_key` hozircha bo'sh (`*_tracked` maydonlari "
+        "sababini ko'rsatadi)."
+    ),
+    responses=_with_errors((422, "Noma'lum o'lchagich kaliti")),
+)
+async def get_quota_breakdown(
+    user: CurrentUser,
+    svc: BillingSvc,
+    key: Annotated[str, Path(description="O'lchagich kaliti")],
+) -> QuotaBreakdown:
+    """Bitta kvota o'lchagichi ortidagi tafsilot."""
+    return QuotaBreakdown.model_validate(await svc.quota_breakdown(user, key))
+
+
+@router.post(
+    "/estimate",
+    dependencies=[ScopeAdmin],
+    response_model=CostEstimate,
+    status_code=status.HTTP_200_OK,
+    summary="Narx kalkulyatori",
+    description=(
+        "Kiritilgan hajm uchun har reja narxini hisoblaydi. Hech narsa "
+        "o'qilmaydi va yozilmaydi — faqat reja katalogi ustidagi hisob.\n\n"
+        "`recommended` FAQAT sig'adigan rejalar orasidan tanlanadi: Durabl "
+        "kvotada bloklaydi, ya'ni sig'maydigan reja arzon bo'lsa ham "
+        "mijozga yaramaydi."
+    ),
+    responses=_with_errors((422, "Kiritilgan qiymatlar chegaradan tashqarida")),
+)
+async def estimate_cost(
+    user: CurrentUser,
+    svc: BillingSvc,
+    payload: CostEstimateRequest,
+) -> CostEstimate:
+    """Hajm bo'yicha narx hisoblaydi."""
+    subscription = await svc.subscription(user)
+    result = await svc.estimate(
+        monthly_jobs=payload.monthly_jobs,
+        avg_duration_ms=payload.avg_duration_ms,
+        current_plan=subscription.plan,
+    )
+    return CostEstimate.model_validate(result)
+
+
+@router.get(
+    "/plans/{plan}/preview",
+    dependencies=[ScopeAdmin],
+    response_model=PlanChangePreview,
+    status_code=status.HTTP_200_OK,
+    summary="Reja almashtirish oqibati",
+    description=(
+        "Almashtirishdan OLDIN nima o'zgarishini ko'rsatadi.\n\n"
+        "Eng muhim maydon — `blockers`: pastga tushishda joriy sarf yangi "
+        "rejaning limitidan oshgan bo'lsa, almashtirish DARHOL kvota "
+        "xatosiga olib keladi va mijozning job'lari rad etila boshlaydi. "
+        "Buni oldindan aytish kerak.\n\n"
+        "`prorated_usd` har doim 0: to'lov tizimi yo'q, ya'ni davr "
+        "o'rtasida qayta hisoblash ham yo'q."
+    ),
+    responses=_with_errors((422, "Noma'lum reja")),
+)
+async def preview_plan_change(
+    user: CurrentUser,
+    svc: BillingSvc,
+    plan: Annotated[PlanType, Path(description="Yangi reja")],
+) -> PlanChangePreview:
+    """Reja almashtirish oqibatini qaytaradi."""
+    return PlanChangePreview.model_validate(await svc.plan_change_preview(user, plan))
 
 
 __all__ = ["router"]

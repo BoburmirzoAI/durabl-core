@@ -162,6 +162,43 @@ class JobRepository(BaseRepository[Job]):
     # Qidiruv va ro'yxat
     # ------------------------------------------------------------------
 
+    async def runtime_totals(
+        self,
+        *,
+        user_id: uuid.UUID | str | None = None,
+        start: datetime | None = None,
+        end: datetime | None = None,
+    ) -> list[tuple[str, int, float]]:
+        """Runtime kesimi: `(runtime, job_soni, bajarish_soniyalari)`.
+
+        Xarajat taqsimoti uchun: "pulim qaysi runtime'ga ketyapti"
+        savoliga javob beradi.
+
+        `duration_ms` NULL bo'lgan job'lar (hali tugamaganlar) soniyaga
+        0 qo'shadi, lekin SONGA kiradi — ya'ni "nechta job yuborilgan"
+        va "qancha hisoblash sarflangan" ikki alohida haqiqat sifatida
+        qoladi.
+
+        Bitta guruhlangan so'rov: har runtime uchun alohida so'rov
+        yuborish job soni o'sganda sezilarli sekinlashardi.
+        """
+        conditions = self._conditions(
+            user_id=user_id, start=start, end=end, time_column="created_at"
+        )
+        stmt = (
+            select(
+                Job.runtime,
+                func.count(Job.id),
+                func.coalesce(func.sum(Job.duration_ms), 0),
+            )
+            .where(*conditions)
+            .group_by(Job.runtime)
+        )
+        rows = (await self._execute(stmt)).all()
+        return [
+            (str(runtime), int(count or 0), float(ms or 0) / 1000.0) for runtime, count, ms in rows
+        ]
+
     async def search(
         self,
         user_id: uuid.UUID | str | None = None,

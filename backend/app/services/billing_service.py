@@ -46,6 +46,7 @@ from app.exceptions import (
     ValidationError,
 )
 from app.logging_config import get_logger
+from app.repositories.job_repo import JobRepository
 from app.repositories.subscription_repo import SubscriptionRepository
 from app.repositories.usage_repo import UsageRepository
 from app.schemas.billing import (
@@ -54,7 +55,13 @@ from app.schemas.billing import (
     UsageHistoryItem,
     UsageSummary,
 )
-from app.utils.time_utils import month_key, next_month, start_of_month, utcnow
+from app.utils.time_utils import (
+    month_key,
+    month_key_start,
+    next_month,
+    start_of_month,
+    utcnow,
+)
 
 if TYPE_CHECKING:
     from redis.asyncio import Redis
@@ -74,6 +81,61 @@ MAX_HISTORY_MONTHS: Final = 60
 
 #: `history()` standart chuqurligi — bir yil.
 DEFAULT_HISTORY_MONTHS: Final = 12
+
+#: ## Overage (limitdan oshish) narxi NEGA YO'Q
+#:
+#: Durabl kvotaga yetganda job'ni QABUL QILMAYDI (`check_quota` ->
+#: `QuotaExceededError`), ya'ni "limitdan oshib ishlatish" holati
+#: TEXNIK JIHATDAN mavjud emas. Shu sababli prognoz va kalkulyatorda
+#: `overage_usd` har doim 0 va `overage_label` `None`.
+#:
+#: Agar kelgusida overage sotilsa, bu yerga narx qo'shiladi va
+#: `check_quota` bloklash o'rniga hisob yozishga o'tadi — ikkisi birga
+#: o'zgarishi SHART, aks holda mijozdan bloklangan ish uchun pul
+#: olinardi.
+OVERAGE_USD_PER_JOB: Final[float] = 0.0
+
+#: Kvota drill-down qo'llaydigan o'lchagichlar.
+#:
+#: FAQAT tarixi saqlanadigan o'lchagichlar bor.
+#: `max_concurrent_jobs` va `requests_per_minute` ATAYLAB yo'q: ular
+#: Redis'da LAHZALIK qiymat sifatida yashaydi (hisoblagich TTL bilan
+#: o'chadi), ya'ni "kunlar bo'yicha" yoki "kesim bo'yicha" tahlil
+#: yasash uchun ma'lumot YO'Q. Ularni qo'shish uchun avval o'lchov
+#: saqlanishi kerak.
+QUOTA_MONTHLY_JOBS: Final[str] = "monthly_jobs"
+QUOTA_COMPUTE_SECONDS: Final[str] = "compute_seconds"
+QUOTA_KEYS: Final[frozenset[str]] = frozenset({QUOTA_MONTHLY_JOBS, QUOTA_COMPUTE_SECONDS})
+
+#: Sarfni kamaytirish bo'yicha amaliy maslahatlar (o'lchagich bo'yicha).
+#:
+#: Maslahatlar UMUMIY emas, mahsulotning haqiqiy imkoniyatlariga
+#: ishora qiladi — aks holda ular bo'sh gap bo'lib qolardi.
+QUOTA_TIPS: Final[dict[str, list[str]]] = {
+    QUOTA_MONTHLY_JOBS: [
+        "`Idempotency-Key` ishlating — tarmoq qayta urinishi ikkinchi "
+        "job yaratmaydi va kvotani yemaydi.",
+        "Takrorlanuvchi ishni cron jadvaliga o'tkazing: bitta jadval "
+        "kerakli chastotada ishlaydi, qo'lda yuborilgan takroriy "
+        "job'lar esa kvotani ikkilantiradi.",
+        "`max_retries` ni kamaytiring — har urinish alohida bajarish, "
+        "lekin job soniga faqat BITTA job hisoblanadi, shuning uchun "
+        "bu hisoblash soniyalarini tejaydi.",
+    ],
+    QUOTA_COMPUTE_SECONDS: [
+        "`timeout_seconds` ni real ehtiyojga qisqartiring — qotib "
+        "qolgan job limitgacha hisoblash yeydi.",
+        "4xx qaytaradigan HTTP job'lar qayta urinilmaydi, lekin 5xx "
+        "uchun `max_retries` ni kamaytirish sarfni tejaydi.",
+        "Og'ir ishni bo'lib yuboring: ikki qisqa job bitta uzun "
+        "job'dan ko'proq nazorat beradi va qayta urinish arzonroq.",
+    ],
+}
+
+#: Prognoz uchun eng kam kun: oyning 1-kunida "joriy tezlik" tushunchasi
+#: ma'nosiz (bitta kunlik ma'lumot butun oyga ko'paytirilsa, xato
+#: 30 barobar bo'lishi mumkin).
+MIN_DAYS_FOR_PROJECTION: Final[int] = 1
 
 #: Rejalar katalogi arzondan qimmatga shu tartibda chiqadi.
 PLAN_ORDER: Final[tuple[PlanType, ...]] = (
@@ -165,6 +227,78 @@ PLAN_PRESENTATION: Final[dict[PlanType, PlanCopy]] = {
 }
 
 
+def _compare_rows(source: PlanLimits, target: PlanLimits) -> list[dict[str, Any]]:
+    """Ikki reja limitini solishtirish jadvali.
+
+    `direction` mijoz nuqtai nazaridan: KATTA limit — `better`. Narx
+    esa teskari — qimmatroq `worse`, chunki u mijozning xarajati.
+    Shuning uchun har qator uchun yo'nalish ALOHIDA aniqlanadi,
+    umumiy formula bilan emas.
+    """
+
+    def row(
+        label: str, left: Any, right: Any, *, higher_is_better: bool, fmt: str = "{}"
+    ) -> dict[str, Any]:
+        if left == right:
+            direction = "same"
+        elif (right > left) is higher_is_better:
+            direction = "better"
+        else:
+            direction = "worse"
+        return {
+            "label": label,
+            "from": fmt.format(left),
+            "to": fmt.format(right),
+            "direction": direction,
+        }
+
+    return [
+        row(
+            "Narx ($/oy)",
+            source.price_usd_month,
+            target.price_usd_month,
+            higher_is_better=False,
+            fmt="${:,.0f}",
+        ),
+        row(
+            "Oylik job", source.monthly_jobs, target.monthly_jobs, higher_is_better=True, fmt="{:,}"
+        ),
+        row(
+            "Bir vaqtda",
+            source.max_concurrent_jobs,
+            target.max_concurrent_jobs,
+            higher_is_better=True,
+            fmt="{:,}",
+        ),
+        row(
+            "Maks. timeout",
+            source.max_timeout_seconds,
+            target.max_timeout_seconds,
+            higher_is_better=True,
+            fmt="{}s",
+        ),
+        row(
+            "Xotira", source.max_memory_mb, target.max_memory_mb, higher_is_better=True, fmt="{} MB"
+        ),
+        row("CPU", source.max_cpus, target.max_cpus, higher_is_better=True, fmt="{}"),
+        row(
+            "So'rov/daqiqa",
+            source.requests_per_minute,
+            target.requests_per_minute,
+            higher_is_better=True,
+            fmt="{:,}",
+        ),
+        row(
+            "Log tarixi",
+            source.log_retention_days,
+            target.log_retention_days,
+            higher_is_better=True,
+            fmt="{} kun",
+        ),
+        row("Tarmoq", source.allow_network, target.allow_network, higher_is_better=True, fmt="{}"),
+    ]
+
+
 class BillingService:
     """Obuna va foydalanish hisobi.
 
@@ -177,6 +311,10 @@ class BillingService:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
         self.subscriptions = SubscriptionRepository(session)
+        #: Xarajat taqsimoti va kvota kesimi uchun — billing job
+        #: FAKTLARIGA tayanadi (qancha ishlatilgan), job'larni
+        #: BOSHQARMAYDI.
+        self.jobs = JobRepository(session)
         #: DIQQAT: atribut nomi `usage` BO'LMAYDI — u ayni nomli public
         #: metodni instansiyada soya qilib qo'yardi (`await svc.usage(user)`
         #: repozitoriy obyektini chaqirishga urinib `TypeError` berardi).
@@ -334,6 +472,397 @@ class BillingService:
         bounded = max(1, min(int(limit), MAX_HISTORY_MONTHS))
         records = await self.usage_records.history(user.id, bounded)
         return [UsageHistoryItem.model_validate(record) for record in records]
+
+    async def statements(
+        self,
+        user: User,
+        *,
+        limit: int = DEFAULT_HISTORY_MONTHS,
+    ) -> list[dict[str, Any]]:
+        """Oylik hisob-kitoblar (`GET /billing/invoices`).
+
+        ## Nega "hisob-faktura" emas, "hisob-kitob"
+
+        Loyihada TO'LOV TIZIMI YO'Q: `stripe`/`paddle` integratsiyasi,
+        `invoices` jadvali va PDF generatsiyasi mavjud emas
+        (`subscriptions.external_customer_id` — kelgusi uchun qoldirilgan
+        ilgak). Shuning uchun:
+
+        * `amount_usd` — HAQIQIY: `usage_records` dagi haqiqiy
+          foydalanishdan va reja narxidan hisoblanadi;
+        * `status` — `None`: to'lov holati tushunchasi yo'q. "paid" deb
+          qaytarish mijozga to'lov o'tgani haqida YOLG'ON xabar berardi;
+        * `pdf_url` — `None`: hujjat generatsiyasi yo'q.
+
+        `payments_enabled=False` maydoni buni ochiq aytadi, UI esa
+        "to'lov ulanmagan" deb ko'rsatishi mumkin.
+
+        ## Narx qaysi reja bo'yicha hisoblanadi
+
+        `subscriptions` faqat JORIY rejani saqlaydi — o'tgan davrlarda
+        qaysi reja amal qilganini bilish imkoni yo'q. Shuning uchun
+        barcha davrlar joriy reja narxi bilan hisoblanadi va javobda
+        `plan` maydoni ko'rsatiladi, `plan_history_tracked=False`
+        esa cheklovni aytadi.
+
+        Bu to'qib chiqarish EMAS: foydalanish ma'lumoti (job soni,
+        bajarish soniyalari) haqiqiy, faqat narx joriy rejaga tayanadi.
+        """
+        records = await self.history(user, limit=limit)
+        subscription = await self.subscriptions.ensure_for_user(user.id)
+        limits = self._effective_limits(subscription)
+
+        return [
+            {
+                # `id` alohida yozuv emas — davr kaliti identifikator
+                # sifatida ishlatiladi (`2026-10`). UI uchun yetarli va
+                # barqaror.
+                "id": f"{limits.plan.value}-{item.period}",
+                "period": item.period,
+                "date": month_key_start(item.period),
+                "plan": limits.plan,
+                "job_count": item.job_count,
+                "execution_seconds": item.execution_seconds,
+                "amount_usd": round(limits.price_usd_month, 2),
+                "overage_usd": OVERAGE_USD_PER_JOB,
+                "status": None,
+                "pdf_url": None,
+                "payments_enabled": False,
+                "plan_history_tracked": False,
+            }
+            for item in records
+        ]
+
+    async def projection(self, user: User) -> dict[str, Any]:
+        """Oy oxirigacha xarajat va kvota prognozi.
+
+        ## Prognoz qanday hisoblanadi
+
+        Joriy tezlik = `job_count / o'tgan_kunlar`. Shu tezlik oy
+        oxirigacha davom etadi deb olinadi.
+
+        Oyning BIRINCHI kunida prognoz berilmaydi (`projected` = joriy
+        qiymat): bir kunlik ma'lumotni 30 ga ko'paytirish xatoni
+        30 barobar kattalashtiradi va mijozni behuda qo'rqitadi.
+
+        ## `will_exceed` nimani bildiradi
+
+        "Qo'shimcha pul to'laysiz" EMAS, "limitga yetib job'lar RAD
+        ETILA boshlaydi" degani — Durabl kvotada bloklaydi
+        (`OVERAGE_USD_PER_JOB` izohiga qarang). Shu sababli
+        `overage_usd` har doim 0.
+        """
+        subscription = await self.subscriptions.ensure_for_user(user.id)
+        limits = self._effective_limits(subscription)
+        record = await self.usage_records.current_period(user.id)
+        await self.session.commit()
+
+        now = utcnow()
+        period_end = next_month()
+        days_total = (period_end - start_of_month()).days
+        days_elapsed = max(MIN_DAYS_FOR_PROJECTION, (now - start_of_month()).days)
+        days_remaining = max(0, (period_end - now).days)
+
+        per_day = record.job_count / days_elapsed
+        projected_jobs = (
+            record.job_count
+            if days_elapsed <= MIN_DAYS_FOR_PROJECTION
+            else round(per_day * days_total)
+        )
+
+        base = round(limits.price_usd_month, 2)
+        return {
+            # Reja narxi oy boshida to'liq hisoblanadi — bo'lib to'lash
+            # yo'q, shuning uchun "sarflangan" ham "prognoz" ham ayni
+            # asosiy to'lovdan boshlanadi.
+            "spent_usd": base,
+            "projected_usd": base,
+            "base_usd": base,
+            "overage_usd": OVERAGE_USD_PER_JOB,
+            "days_remaining": days_remaining,
+            "days_total": days_total,
+            "will_exceed": projected_jobs > limits.monthly_jobs,
+            "projected_jobs": projected_jobs,
+            "current_jobs": record.job_count,
+            "monthly_limit": limits.monthly_jobs,
+            "jobs_per_day": round(per_day, 2),
+        }
+
+    async def runtime_costs(self, user: User) -> list[dict[str, Any]]:
+        """Joriy davrda runtime bo'yicha xarajat taqsimoti.
+
+        ## Narx qanday taqsimlanadi
+
+        Reja narxi OYLIK va yagona — runtime bo'yicha alohida tarif
+        yo'q. Shuning uchun xarajat BAJARISH SONIYALARI nisbatida
+        taqsimlanadi: "pulimning qancha qismi Node'ga ketdi" savoliga
+        shu javob beradi.
+
+        Bu o'ylab topilgan narx EMAS, balki mavjud to'lovning haqiqiy
+        hisoblash sarfi bo'yicha taqsimi. Hech qanday soniya
+        bajarilmagan bo'lsa (`total == 0`), taqsim ham nol bo'ladi —
+        teng bo'lib berish noto'g'ri xulosa berardi.
+        """
+        subscription = await self.subscriptions.ensure_for_user(user.id)
+        limits = self._effective_limits(subscription)
+        rows = await self.jobs.runtime_totals(user_id=user.id, start=start_of_month(), end=utcnow())
+
+        total_seconds = sum(seconds for _, _, seconds in rows)
+        base = limits.price_usd_month
+
+        result: list[dict[str, Any]] = []
+        for runtime, jobs, seconds in sorted(rows, key=lambda row: -row[2]):
+            share = (seconds / total_seconds) if total_seconds > 0 else 0.0
+            result.append(
+                {
+                    "runtime": runtime,
+                    "jobs": jobs,
+                    "compute_seconds": round(seconds, 2),
+                    "cost_usd": round(base * share, 2),
+                    "percent": round(share * 100, 1),
+                }
+            )
+        return result
+
+    async def quota_breakdown(self, user: User, key: str) -> dict[str, Any]:
+        """Bitta kvota o'lchagichi ortidagi tafsilot.
+
+        O'lchagich faqat "82%" deydi. Foydalanuvchiga esa uchta narsa
+        kerak: NIMA hisoblanadi, KIM sarflayapti va limitga yetganda
+        NIMA bo'ladi.
+
+        ## Qo'llanadigan kalitlar
+
+        Faqat HAQIQIY o'lchanadigan o'lchagichlar:
+
+        * `monthly_jobs` — oylik job soni (`usage_records.job_count`);
+        * `compute_seconds` — bajarish soniyalari.
+
+        `max_concurrent_jobs` va `requests_per_minute` ATAYLAB YO'Q:
+        ular Redis'da LAHZALIK qiymat sifatida yashaydi va tarixi
+        saqlanmaydi, ya'ni "kunlar bo'yicha" grafik yasab bo'lmaydi.
+        Noma'lum kalit uchun `ValidationError` — jim bo'sh javob
+        qaytarish mijozni chalg'itardi.
+
+        ## `at_limit` nima deydi
+
+        Durabl kvotada job'ni RAD ETADI (`check_quota`), qo'shimcha
+        hisob yozmaydi. Shuning uchun `overage_label` har doim `None` —
+        shartnoma ham shuni "oshirib bo'lmaydi" deb ta'riflaydi.
+
+        Raises:
+            ValidationError: Noma'lum o'lchagich kaliti.
+        """
+        if key not in QUOTA_KEYS:
+            raise ValidationError(
+                f"'{key}' kvota o'lchagichi mavjud emas",
+                details={"allowed": sorted(QUOTA_KEYS)},
+            )
+
+        subscription = await self.subscriptions.ensure_for_user(user.id)
+        limits = self._effective_limits(subscription)
+        record = await self.usage_records.current_period(user.id)
+        await self.session.commit()
+
+        runtime_rows = await self.jobs.runtime_totals(
+            user_id=user.id, start=start_of_month(), end=utcnow()
+        )
+
+        if key == QUOTA_MONTHLY_JOBS:
+            current: float = float(record.job_count)
+            limit = float(limits.monthly_jobs)
+            label = "Oylik job soni"
+            counted = "Qabul qilingan har bir job (bekor qilingani ham)"
+            at_limit = "Yangi job'lar 402 bilan rad etiladi, davr yangilanguncha"
+            current_label = f"{record.job_count:,}"
+            limit_label = f"{limits.monthly_jobs:,}"
+            slices = [
+                {
+                    "label": runtime,
+                    "value": jobs,
+                    "value_label": f"{jobs:,}",
+                    "percent": round(jobs / record.job_count * 100, 1) if record.job_count else 0.0,
+                }
+                for runtime, jobs, _ in sorted(runtime_rows, key=lambda row: -row[1])
+            ]
+        else:
+            current = round(record.execution_seconds, 2)
+            # Hisoblash soniyalariga REJA limiti yo'q — chegara job soni
+            # bo'yicha. Shuning uchun "limit" sifatida joriy rejadagi
+            # maksimal nazariy qiymat olinadi: har job o'z timeout'iga
+            # to'liq ishlagan holat.
+            limit = float(limits.monthly_jobs * limits.max_timeout_seconds)
+            label = "Hisoblash soniyalari"
+            counted = "Har bir urinishning sof bajarish vaqti"
+            at_limit = "Alohida limit yo'q — chegara job soni bo'yicha qo'yiladi"
+            current_label = f"{current:,.0f}s"
+            limit_label = f"{limit:,.0f}s (nazariy)"
+            slices = [
+                {
+                    "label": runtime,
+                    "value": round(seconds, 2),
+                    "value_label": f"{seconds:,.0f}s",
+                    "percent": round(seconds / record.execution_seconds * 100, 1)
+                    if record.execution_seconds
+                    else 0.0,
+                }
+                for runtime, _, seconds in sorted(runtime_rows, key=lambda row: -row[2])
+            ]
+
+        percent = round(current / limit * 100, 1) if limit > 0 else 0.0
+        return {
+            "key": key,
+            "label": label,
+            "current": current,
+            "limit": limit,
+            "percent": min(percent, 100.0),
+            "current_label": current_label,
+            "limit_label": limit_label,
+            "resets_at": next_month(),
+            "counted": counted,
+            "at_limit": at_limit,
+            # Durabl kvotada BLOKLAYDI — qo'shimcha narx yo'q.
+            "overage_label": None,
+            "by_runtime": slices,
+            # Kalit bo'yicha taqsim `api_key_usage` jadvalini talab
+            # qiladi (1A-12) — u hali yozilmagan, shuning uchun bo'sh.
+            "by_api_key": [],
+            "by_api_key_tracked": False,
+            # Kunlik grafik `usage_records` da YO'Q: yozuv OYLIK
+            # agregat (`period` ustuni `YYYY-MM`). Kunlik kesim uchun
+            # `jobs.created_at` bo'yicha alohida so'rov kerak —
+            # `GET /analytics/throughput` aynan shuni beradi.
+            "daily": [],
+            "daily_tracked": False,
+            "tips": QUOTA_TIPS[key],
+        }
+
+    async def estimate(
+        self,
+        *,
+        monthly_jobs: int,
+        avg_duration_ms: int,
+        current_plan: PlanType | str | None = None,
+    ) -> dict[str, Any]:
+        """ "Nima bo'lardi" kalkulyatori: hajm -> har reja uchun narx.
+
+        Hech narsani o'qimaydi va yozmaydi — faqat katalog
+        (`PLAN_LIMITS`) ustidagi hisob. Shuning uchun anonim ham
+        chaqirilishi mumkin.
+
+        ## `fits` va `over_by`
+
+        Durabl kvotada bloklaydi, ya'ni rejaga SIG'MAGAN hajm uchun
+        "qo'shimcha to'lov" yo'q — ish shunchaki bajarilmaydi. Shuning
+        uchun `fits=False` bo'lgan reja `total_usd` bersa ham mijozga
+        YARAMAYDI, va `recommended` faqat sig'adiganlar orasidan
+        tanlanadi.
+        """
+        jobs = max(0, monthly_jobs)
+        duration = max(0, avg_duration_ms)
+        compute_seconds = round(jobs * duration / 1000.0, 2)
+        current = self._coerce_plan(current_plan) if current_plan is not None else None
+
+        plans: list[dict[str, Any]] = []
+        for plan_type, limits in PLAN_LIMITS.items():
+            fits = jobs <= limits.monthly_jobs
+            over_by = (
+                round(jobs / limits.monthly_jobs, 2)
+                if not fits and limits.monthly_jobs > 0
+                else 0.0
+            )
+            plans.append(
+                {
+                    "plan": plan_type,
+                    "base_usd": round(limits.price_usd_month, 2),
+                    "overage_usd": OVERAGE_USD_PER_JOB,
+                    "total_usd": round(limits.price_usd_month, 2),
+                    "fits": fits,
+                    "over_by": over_by,
+                }
+            )
+
+        affordable = [item for item in plans if item["fits"]]
+        recommended = (
+            min(affordable, key=lambda item: float(item["total_usd"]))["plan"]
+            if affordable
+            else PlanType.ENTERPRISE
+        )
+        savings = 0.0
+        if current is not None:
+            current_total = next(
+                float(item["total_usd"]) for item in plans if item["plan"] is current
+            )
+            recommended_total = next(
+                float(item["total_usd"]) for item in plans if item["plan"] is recommended
+            )
+            savings = round(current_total - recommended_total, 2)
+
+        return {
+            "monthly_jobs": jobs,
+            "avg_duration_ms": duration,
+            "compute_seconds": compute_seconds,
+            "plans": plans,
+            "recommended": recommended,
+            "savings_usd": savings,
+        }
+
+    async def plan_change_preview(self, user: User, target: PlanType | str) -> dict[str, Any]:
+        """Reja almashtirish oqibatini OLDINDAN ko'rsatadi.
+
+        ## Nega to'siqlar (`blockers`) muhim
+
+        Pastga tushishda joriy sarf yangi rejaning limitidan oshgan
+        bo'lishi mumkin. Bunda almashtirish DARHOL kvota xatosiga olib
+        keladi: mijozning job'lari 402 bilan rad etila boshlaydi.
+
+        Buni almashtirishdan OLDIN aytish kerak — aks holda mijoz
+        "nega hamma narsa buzildi?" degan savolda qoladi va sabab
+        ko'rinmaydi.
+
+        ## `prorated_usd` NEGA 0
+
+        To'lov tizimi yo'q, ya'ni davr o'rtasida qayta hisoblash
+        (proration) ham yo'q — reja darhol almashadi va pul
+        undirilmaydi. Nol qaytarish YOLG'ON emas: haqiqatan hech qanday
+        to'lov amalga oshmaydi. `payments_enabled=False` buni ochiq
+        aytadi.
+        """
+        subscription = await self.subscriptions.ensure_for_user(user.id)
+        await self.session.commit()
+        source_limits = self._effective_limits(subscription)
+        target_plan = self._coerce_plan(target)
+        target_limits = plan_limits(target_plan)
+
+        record = await self.usage_records.current_period(user.id)
+
+        price_delta = round(target_limits.price_usd_month - source_limits.price_usd_month, 2)
+        if price_delta > 0:
+            direction = "upgrade"
+        elif price_delta < 0:
+            direction = "downgrade"
+        else:
+            direction = "same"
+
+        blockers: list[str] = []
+        if record.job_count > target_limits.monthly_jobs:
+            blockers.append(
+                f"Joriy davrda {record.job_count:,} job yuborilgan — "
+                f"{target_plan.value} rejasining chegarasi {target_limits.monthly_jobs:,}. "
+                "Almashtirilsa yangi job'lar davr oxirigacha rad etiladi."
+            )
+
+        return {
+            "from": source_limits.plan,
+            "to": target_plan,
+            "direction": direction,
+            "price_delta_usd": price_delta,
+            "prorated_usd": 0.0,
+            "effective_at": utcnow(),
+            "rows": _compare_rows(source_limits, target_limits),
+            "blockers": blockers,
+            "payments_enabled": False,
+        }
 
     async def record_job(self, user_id: uuid.UUID | str) -> None:
         """Yuborilgan job'ni oylik hisobga qo'shadi (`job_count += 1`).

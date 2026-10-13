@@ -124,6 +124,22 @@ def month_key(value: datetime | None = None) -> str:
     return (ensure_utc(value) or utcnow()).strftime("%Y-%m")
 
 
+def month_key_start(period: str) -> datetime:
+    """`month_key()` ning teskarisi: `2026-10` -> davr boshi (UTC).
+
+    `usage_records.period` ustuni matn (`VARCHAR(7)`) — hisob-kitob
+    javoblarida esa ISO-8601 sana kerak. Shu funksiya ikkisini
+    bog'laydi.
+
+    Raises:
+        ValueError: Format `YYYY-MM` emas. Ataylab yutilmaydi: yaroqsiz
+            davr kaliti DB'da bo'lmasligi kerak, bo'lsa — bu ma'lumot
+            buzilishi va u ko'rinishi kerak.
+    """
+    year, _, month = period.partition("-")
+    return datetime(int(year), int(month), 1, tzinfo=UTC)
+
+
 def isoformat(value: datetime | None) -> str | None:
     """ISO-8601 matn (UTC, `Z` bilan) — API javoblari uchun."""
     aware = ensure_utc(value)
@@ -142,6 +158,7 @@ __all__ = [
     "isoformat",
     "minute_key",
     "month_key",
+    "month_key_start",
     "next_month",
     "seconds_from_now",
     "seconds_until",
